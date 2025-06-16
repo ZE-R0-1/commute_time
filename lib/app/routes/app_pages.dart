@@ -2,6 +2,8 @@ import 'package:get/get.dart';
 
 import '../modules/splash/splash_binding.dart';
 import '../modules/splash/splash_screen.dart';
+import '../modules/home/home_binding.dart';
+import '../modules/home/home_screen.dart';
 import 'app_routes.dart';
 
 class AppPages {
@@ -13,6 +15,11 @@ class AppPages {
       page: () => const SplashScreen(),
       binding: SplashBinding(),
     ),
-    // TODO: 다른 라우트들은 순차적으로 추가
+    GetPage(
+      name: AppRoutes.HOME,
+      page: () => const HomeScreen(),
+      binding: HomeBinding(),
+    ),
+    // 나중에 필요하면 로그인 관련 라우트 추가
   ];
 }

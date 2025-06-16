@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.7.2
+  sdk: '>=3.4.4 <4.0.0'
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -33,15 +33,20 @@ dependencies:
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
+  cupertino_icons: ^1.0.6
 
   # 상태관리
   get: ^4.6.6
   get_storage: ^2.1.1
 
+  # Firebase
+
   # UI/UX
   flutter_screenutil: ^5.9.0
   lottie: ^3.1.2
+
+  # HTTP 통신 (지하철 API용)
+  dio: ^5.4.0
 
   # 유틸리티
   intl: ^0.19.0
@@ -55,7 +60,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+  flutter_lints: ^3.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -63,7 +68,7 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
 
-  # The following line ensures that the Material Icons font is
+  # The following line ensures that the Material Design Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
@@ -74,16 +79,15 @@ flutter:
     - assets/icons/
     - assets/lottie/
 
-  # An image asset can refer to one or more resolution-specific "variants", see
-  # https://flutter.dev/to/resolution-aware-images
-
-  # For details regarding adding assets from package dependencies, see
-  # https://flutter.dev/to/asset-from-package
+  # An image asset can refer to one or more resolution-variant files of the same
+  # image (e.g., 100w/my_image.jpg for the web and 200w/my_image.jpg for web2x).
+  # For more details, refer to the documentation on resolution-aware image loading at:
+  # https://flutter.dev/assets-and-images/
 
   # To add custom fonts to your application, add a fonts section here,
   # in this "flutter" section. Each entry in this list should have a
   # "family" key with the font family name, and a "fonts" key with a
-  # list giving the asset and other descriptors for the font. For
+  # list that gives the asset and other descriptors for the font. For
   # example:
   fonts:
     - family: Pretendard
@@ -97,4 +101,4 @@ flutter:
           weight: 700
   #
   # For details regarding fonts from package dependencies,
-  # see https://flutter.dev/to/font-from-package
+  # see https://flutter.dev/custom-fonts/#from-packages

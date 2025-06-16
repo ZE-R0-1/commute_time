@@ -37,19 +37,21 @@ class SplashController extends GetxController {
 
       if (isFirstTime) {
         // 첫 실행이면 온보딩으로 이동
-        // Get.offAllNamed(AppRoutes.ONBOARDING);
+        _navigateToHome();
         // 임시로 로그인 화면으로 이동
-        _navigateToLogin();
+        // _navigateToLogin();
       } else if (isLoggedIn) {
         // 로그인되어 있으면 홈으로 이동
-        // Get.offAllNamed(AppRoutes.HOME);
+        _navigateToHome();
         // 임시로 로그인 화면으로 이동
-        _navigateToLogin();
+        // _navigateToLogin();
       } else {
+        _navigateToHome();
         // 로그아웃 상태면 로그인으로 이동
-        _navigateToLogin();
+        // _navigateToLogin();
       }
     } catch (e) {
+      print(e.toString());
       // 에러 처리
       Get.snackbar(
         '오류',
@@ -59,18 +61,12 @@ class SplashController extends GetxController {
     }
   }
 
-  void _navigateToLogin() {
-    // TODO: 로그인 화면이 구현되면 활성화
-    // Get.offAllNamed(AppRoutes.LOGIN);
+  void _navigateToHome() {
+    Get.offAllNamed(AppRoutes.HOME);
+  }
 
-    // 임시: 스낵바로 성공 메시지 표시
-    Get.snackbar(
-      '🚇 출퇴근타임',
-      '앱이 성공적으로 초기화되었습니다!\n다음 단계: 로그인 화면 구현',
-      duration: const Duration(seconds: 3),
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Get.theme.colorScheme.primary.withOpacity(0.1),
-      colorText: Get.theme.colorScheme.primary,
-    );
+  void _navigateToLogin() {
+    // 로그인 화면으로 이동
+    Get.offAllNamed(AppRoutes.LOGIN);
   }
 }
