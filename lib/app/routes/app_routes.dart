@@ -1,12 +1,16 @@
-class AppRoutes {
-  static const String SPLASH = '/splash';
-  static const String LOGIN = '/login';
-  static const String ONBOARDING = '/onboarding';
-  static const String HOME = '/home';
-  static const String MAP = '/map';
-  static const String ANALYSIS = '/analysis';
-  static const String SETTINGS = '/settings';
-  static const String MAP_SETUP = '/map-setup';
-  static const String EMAIL_LOGIN = '/email-login';
-  static const String ROUTE_DETAIL = '/route-detail';
+part of 'app_pages.dart';
+
+abstract class Routes {
+  Routes._();
+
+  static const splash = '/splash';
+  static const login = '/login';
+  static const onboarding = '/onboarding';
+  static const home = '/home';
+  static const map = '/map';
+  static const mapSetup = '/map-setup';
+  static const analysis = '/analysis';
+  static const settings = '/settings';
+  static const routeDetail = '/route-detail';
+  static const profile = '/profile';
 }

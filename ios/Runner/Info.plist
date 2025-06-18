@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>출퇴근 경로 안내를 위해 위치 권한이 필요합니다.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>출퇴근 경로 안내를 위해 위치 권한이 필요합니다.</string>
 </dict>
 </plist>

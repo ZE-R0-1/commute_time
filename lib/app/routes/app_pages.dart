@@ -1,25 +1,108 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../modules/splash/splash_binding.dart';
-import '../modules/splash/splash_screen.dart';
-import '../modules/home/home_binding.dart';
-import '../modules/home/home_screen.dart';
-import 'app_routes.dart';
+import '../../screens/splash/splash_screen.dart';
+import '../../screens/splash/splash_binding.dart';
+import '../../screens/auth/login_screen.dart';
+import '../../screens/auth/auth_binding.dart';
+import '../../screens/onboarding/onboarding_screen.dart';
+import '../../screens/onboarding/onboarding_binding.dart';
+import '../../screens/home/home_screen.dart';
+import '../../screens/home/home_binding.dart';
+
+// TODO: 아직 구현하지 않은 화면들 - 나중에 추가
+// import '../../screens/map/map_screen.dart';
+// import '../../screens/map/map_binding.dart';
+// import '../../screens/analysis/analysis_screen.dart';
+// import '../../screens/analysis/analysis_binding.dart';
+// import '../../screens/settings/settings_screen.dart';
+// import '../../screens/settings/settings_binding.dart';
+
+part 'app_routes.dart';
 
 class AppPages {
-  static const INITIAL = AppRoutes.SPLASH;
+  AppPages._();
+
+  static const initial = Routes.splash;
 
   static final routes = [
     GetPage(
-      name: AppRoutes.SPLASH,
+      name: Routes.splash,
       page: () => const SplashScreen(),
       binding: SplashBinding(),
     ),
     GetPage(
-      name: AppRoutes.HOME,
+      name: Routes.login,
+      page: () => const LoginScreen(),
+      binding: AuthBinding(),
+    ),
+
+    GetPage(
+      name: Routes.onboarding,
+      page: () => const OnboardingScreen(),
+      binding: OnboardingBinding(),
+    ),
+    GetPage(
+      name: Routes.home,
       page: () => const HomeScreen(),
       binding: HomeBinding(),
     ),
-    // 나중에 필요하면 로그인 관련 라우트 추가
+    GetPage(
+      name: Routes.map,
+      page: () => const _PlaceholderScreen(title: '지도 화면'),
+    ),
+    GetPage(
+      name: Routes.analysis,
+      page: () => const _PlaceholderScreen(title: '분석 화면'),
+    ),
+    GetPage(
+      name: Routes.settings,
+      page: () => const _PlaceholderScreen(title: '설정 화면'),
+    ),
   ];
+}
+
+// 임시 플레이스홀더 화면
+class _PlaceholderScreen extends StatelessWidget {
+  final String title;
+
+  const _PlaceholderScreen({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Get.back(),
+        ),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.construction,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '$title\n(구현 예정)',
+              style: Get.textTheme.headlineSmall?.copyWith(
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () => Get.offAllNamed(Routes.login),
+              child: const Text('로그인 화면으로 돌아가기'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
