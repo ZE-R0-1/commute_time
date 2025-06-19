@@ -7,16 +7,10 @@ import '../../screens/auth/login_screen.dart';
 import '../../screens/auth/auth_binding.dart';
 import '../../screens/onboarding/onboarding_screen.dart';
 import '../../screens/onboarding/onboarding_binding.dart';
-import '../../screens/home/home_screen.dart';
-import '../../screens/home/home_binding.dart';
-
-// TODO: 아직 구현하지 않은 화면들 - 나중에 추가
-// import '../../screens/map/map_screen.dart';
-// import '../../screens/map/map_binding.dart';
-// import '../../screens/analysis/analysis_screen.dart';
-// import '../../screens/analysis/analysis_binding.dart';
-// import '../../screens/settings/settings_screen.dart';
-// import '../../screens/settings/settings_binding.dart';
+import '../../screens/main_tab/main_tab_screen.dart';
+import '../../screens/main_tab/main_tab_binding.dart';
+import '../../screens/route_detail/route_detail_screen.dart';
+import '../../screens/route_detail/route_detail_binding.dart';
 
 part 'app_routes.dart';
 
@@ -44,8 +38,14 @@ class AppPages {
     ),
     GetPage(
       name: Routes.home,
-      page: () => const HomeScreen(),
-      binding: HomeBinding(),
+      page: () => const MainTabScreen(),
+      binding: MainTabBinding(),
+    ),
+
+    GetPage(
+      name: Routes.routeDetail,
+      page: () => const RouteDetailScreen(),
+      binding: RouteDetailBinding(),
     ),
     GetPage(
       name: Routes.map,

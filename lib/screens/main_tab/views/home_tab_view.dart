@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import 'home_controller.dart';
-import 'widgets/greeting_section.dart';
-import 'widgets/weather_alert_card.dart';
-import 'widgets/commute_card.dart';
-import 'widgets/traffic_status_grid.dart';
+import '../../home/home_controller.dart';
+import '../../home/widgets/greeting_section.dart';
+import '../../home/widgets/weather_alert_card.dart';
+import '../../home/widgets/commute_card.dart';
+import '../../home/widgets/traffic_status_grid.dart';
 
-class HomeScreen extends GetView<HomeController> {
-  const HomeScreen({super.key});
+class HomeTabView extends GetView<HomeController> {
+  const HomeTabView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +55,7 @@ class HomeScreen extends GetView<HomeController> {
                 // 교통 상황
                 const TrafficStatusGrid(),
 
-                // 하단 여백
+                // 하단 여백 (BottomNavigationBar를 위한 공간)
                 const SizedBox(height: 20),
               ],
             ),
