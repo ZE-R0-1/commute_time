@@ -106,8 +106,8 @@ class AuthController extends GetxController {
       // 온보딩이 완료되지 않았으면 온보딩으로
       Get.offNamed(Routes.onboarding);
     } else {
-      // 온보딩이 완료되었으면 홈으로
-      Get.offNamed(Routes.home);
+      // 온보딩이 완료되었으면 메인 화면(탭바 포함)으로
+      Get.offNamed(Routes.main);
     }
   }
 

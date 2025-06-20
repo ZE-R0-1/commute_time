@@ -57,7 +57,7 @@ class SplashController extends GetxController {
     } else {
       // 모든 설정이 완료되어 있으면 홈 화면으로
       print('→ 홈 화면으로 이동');
-      Get.offNamed(Routes.home);
+      Get.offNamed(Routes.main);
     }
   }
 }

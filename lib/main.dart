@@ -16,7 +16,7 @@ void main() async {
   // 테스트용: 앱 상태 초기화 (개발 중에만 사용)
   final storage = GetStorage();
 
-  // 🔥 홈 화면 테스트용 - 온보딩 완료 상태로 설정
+  // 🔥 메인 화면(탭바) 테스트용 - 온보딩 완료 상태로 설정
   storage.erase(); // 기존 데이터 삭제
   storage.write('is_logged_in', true);
   storage.write('onboarding_completed', true);
@@ -29,11 +29,12 @@ void main() async {
   // 다른 테스트 시나리오들 (필요시 주석 해제)
   // storage.erase(); // 모든 데이터 삭제 (첫 실행 테스트)
   // storage.write('is_logged_in', false); // 로그인 화면 테스트
+  // storage.write('is_logged_in', true);
   // storage.write('onboarding_completed', false); // 온보딩 화면 테스트
 
   print('=== 앱 시작 ===');
   print('저장소 초기화 완료');
-  print('홈 화면 테스트 모드');
+  print('메인 화면(탭바) 테스트 모드');
 
   // 상태바 스타일 설정
   SystemChrome.setSystemUIOverlayStyle(

@@ -172,7 +172,7 @@ class OnboardingController extends GetxController {
     }
   }
 
-  // 온보딩 완료
+  // 온보딩 완료 후 메인 화면으로 이동
   Future<void> _completeOnboarding() async {
     try {
       isLoading.value = true;
@@ -204,9 +204,9 @@ class OnboardingController extends GetxController {
         icon: const Icon(Icons.celebration, color: Colors.white),
       );
 
-      // 2초 후 홈 화면으로 이동
+      // 2초 후 메인 화면(탭바 포함)으로 이동
       await Future.delayed(const Duration(seconds: 2));
-      Get.offAllNamed(Routes.home);
+      Get.offAllNamed(Routes.main);
 
     } catch (e) {
       print('온보딩 완료 오류: $e');
