@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../app/service/weather_service.dart';
 import 'home_controller.dart';
 
 class HomeScreen extends GetView<HomeController> {
@@ -142,55 +143,211 @@ class HomeScreen extends GetView<HomeController> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.yellow[100],
+        color: controller.isWeatherLoading.value
+            ? Colors.grey[100]
+            : Colors.yellow[100],
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.yellow[200]!,
+          color: controller.isWeatherLoading.value
+              ? Colors.grey[200]!
+              : Colors.yellow[200]!,
           width: 1,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.yellow[200],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.wb_cloudy,
-                  color: Colors.orange,
-                  size: 24,
+      child: controller.isWeatherLoading.value
+          ? _buildWeatherLoadingState()
+          : _buildWeatherContent(),
+    ));
+  }
+
+
+// 날씨 로딩 상태
+  Widget _buildWeatherLoadingState() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.grey,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  controller.weatherInfo.value,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                '날씨 정보 로딩 중...',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          '잠시만 기다려주세요',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+            height: 1.4,
+          ),
+        ),
+      ],
+    );
+  }
+
+// 날씨 정보 콘텐츠
+  Widget _buildWeatherContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.yellow[200],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                _getWeatherIcon(),
+                color: Colors.orange,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                controller.weatherInfo.value,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+            // 🆕 새로고침 버튼 추가
+            InkWell(
+              onTap: controller.refreshWeather,
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(
+                  Icons.refresh,
+                  size: 20,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          controller.weatherAdvice.value,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[700],
+            height: 1.4,
+          ),
+        ),
+
+        // 🆕 상세 날씨 정보 (현재 날씨가 있을 때만 표시)
+        Obx(() {
+          final weather = controller.currentWeather.value;
+          if (weather != null) {
+            return Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildWeatherDetail('습도', '${weather.humidity}%'),
+                      _buildWeatherDetail('풍속', '${weather.windSpeed.toStringAsFixed(1)}m/s'),
+                      _buildWeatherDetail('강수량', weather.precipitation),
+                    ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            );
+          }
+          return const SizedBox.shrink();
+        }),
+      ],
+    );
+  }
+
+// 날씨 상세 정보 위젯
+  Widget _buildWeatherDetail(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
           ),
-          const SizedBox(height: 12),
-          Text(
-            controller.weatherAdvice.value,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[700],
-              height: 1.4,
-            ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
           ),
-        ],
-      ),
-    ));
+        ),
+      ],
+    );
+  }
+
+// 날씨에 따른 아이콘 선택
+  IconData _getWeatherIcon() {
+    final weather = controller.currentWeather.value;
+    if (weather == null) return Icons.wb_cloudy;
+
+    // 강수 타입 우선 확인
+    switch (weather.precipitationType) {
+      case PrecipitationType.rain:
+      case PrecipitationType.rainDrop:
+        return Icons.grain; // 비
+      case PrecipitationType.snow:
+      case PrecipitationType.snowDrop:
+        return Icons.ac_unit; // 눈
+      case PrecipitationType.rainSnow:
+      case PrecipitationType.rainSnowDrop:
+        return Icons.snowing; // 진눈깨비
+      default:
+        break;
+    }
+
+    // 하늘 상태에 따른 아이콘
+    switch (weather.skyCondition) {
+      case SkyCondition.clear:
+        return Icons.wb_sunny; // 맑음
+      case SkyCondition.partlyCloudy:
+        return Icons.cloud_sharp; // 구름많음
+      case SkyCondition.cloudy:
+        return Icons.wb_cloudy; // 흐림
+    }
   }
 
   // 출근 정보 카드 (상세 버튼 추가)

@@ -3,12 +3,22 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // 🆕 추가
 
 import 'app/routes/app_pages.dart';
 import 'app/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 🆕 환경변수 파일 로드
+  try {
+    await dotenv.load(fileName: ".env");
+    print('환경변수 로드 완료');
+  } catch (e) {
+    print('환경변수 로드 실패: $e');
+    print('기본값으로 진행합니다.');
+  }
 
   // 로컬 저장소 초기화
   await GetStorage.init();
@@ -25,6 +35,10 @@ void main() async {
   storage.write('work_address', '서울특별시 서초구 서초대로 456');
   storage.write('work_start_time', '09:00');
   storage.write('work_end_time', '18:00');
+
+  // 🆕 테스트용 위치 정보 (강남역 좌표)
+  storage.write('home_latitude', 37.498095);
+  storage.write('home_longitude', 127.027610);
 
   // 다른 테스트 시나리오들 (필요시 주석 해제)
   // storage.erase(); // 모든 데이터 삭제 (첫 실행 테스트)

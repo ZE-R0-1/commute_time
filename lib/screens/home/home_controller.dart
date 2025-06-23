@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 
+import '../../app/service/weather_service.dart';
+
 class HomeController extends GetxController {
   final GetStorage _storage = GetStorage();
 
@@ -12,9 +14,17 @@ class HomeController extends GetxController {
   final RxString workStartTime = '09:00'.obs;
   final RxString workEndTime = '18:00'.obs;
 
-  // 날씨 정보
-  final RxString weatherInfo = '🌧️ 오늘 오후 비 예보'.obs;
-  final RxString weatherAdvice = '우산을 챙기시고 조기 출발을 권장드려요'.obs;
+  // 🆕 위치 정보
+  final RxDouble homeLatitude = 37.498095.obs; // 강남역 기본값
+  final RxDouble homeLongitude = 127.027610.obs;
+
+  // 🆕 실제 날씨 정보 (WeatherService 사용)
+  final Rx<WeatherInfo?> currentWeather = Rx<WeatherInfo?>(null);
+  final RxList<WeatherForecast> weatherForecast = <WeatherForecast>[].obs;
+
+  // 🆕 UI 표시용 날씨 정보 (기존 코드와 호환성 유지)
+  final RxString weatherInfo = '날씨 정보 로딩 중...'.obs;
+  final RxString weatherAdvice = '잠시만 기다려주세요'.obs;
 
   // 출근 정보
   final RxString recommendedDepartureTime = '8:15 출발 권장'.obs;
@@ -32,6 +42,7 @@ class HomeController extends GetxController {
 
   // 로딩 상태
   final RxBool isLoading = false.obs;
+  final RxBool isWeatherLoading = true.obs; // 🆕 날씨 로딩 상태
 
   @override
   void onInit() {
@@ -39,6 +50,7 @@ class HomeController extends GetxController {
     _loadUserData();
     _initializeTransportStatus();
     _loadTodayData();
+    _loadWeatherData(); // 🆕 날씨 데이터 로드
   }
 
   // 사용자 데이터 로드
@@ -49,13 +61,90 @@ class HomeController extends GetxController {
     workStartTime.value = _storage.read('work_start_time') ?? '09:00';
     workEndTime.value = _storage.read('work_end_time') ?? '18:00';
 
+    // 🆕 위치 정보 로드
+    homeLatitude.value = _storage.read('home_latitude') ?? 37.498095;
+    homeLongitude.value = _storage.read('home_longitude') ?? 127.027610;
+
     // Mock 사용자 이름
     userName.value = '김출근';
 
     print('사용자 데이터 로드 완료');
     print('집: ${homeAddress.value}');
+    print('위치: ${homeLatitude.value}, ${homeLongitude.value}');
     print('회사: ${workAddress.value}');
     print('근무시간: ${workStartTime.value} ~ ${workEndTime.value}');
+  }
+
+  // 🆕 실제 날씨 데이터 로드
+  Future<void> _loadWeatherData() async {
+    try {
+      isWeatherLoading.value = true;
+
+      print('날씨 정보 로딩 시작...');
+      print('위치: ${homeLatitude.value}, ${homeLongitude.value}');
+
+      // 현재 날씨 조회
+      final weatherData = await WeatherService.getCurrentWeather(
+          homeLatitude.value,
+          homeLongitude.value
+      );
+
+      if (weatherData != null) {
+        currentWeather.value = weatherData;
+
+        // UI 표시용 텍스트 업데이트
+        weatherInfo.value = '${weatherData.weatherEmoji} ${weatherData.weatherDescription} ${weatherData.temperature.round()}°C';
+        weatherAdvice.value = weatherData.advice;
+
+        print('현재 날씨 로드 완료: ${weatherData.weatherDescription} ${weatherData.temperature}°C');
+      } else {
+        // API 오류시 기본값
+        weatherInfo.value = '🌤️ 날씨 정보를 불러올 수 없습니다';
+        weatherAdvice.value = '잠시 후 다시 시도해주세요';
+        print('날씨 정보 로드 실패');
+      }
+
+      // 날씨 예보 조회 (선택사항)
+      final forecastData = await WeatherService.getWeatherForecast(
+          homeLatitude.value,
+          homeLongitude.value
+      );
+
+      if (forecastData.isNotEmpty) {
+        weatherForecast.value = forecastData;
+        print('날씨 예보 로드 완료: ${forecastData.length}개');
+
+        // 오늘 비 예보 확인
+        _checkRainForecast(forecastData);
+      }
+
+    } catch (e) {
+      print('날씨 데이터 로드 오류: $e');
+      weatherInfo.value = '🌤️ 날씨 정보 오류';
+      weatherAdvice.value = '잠시 후 다시 시도해주세요';
+    } finally {
+      isWeatherLoading.value = false;
+    }
+  }
+
+  // 🆕 비 예보 확인 및 조언 업데이트
+  void _checkRainForecast(List<WeatherForecast> forecasts) {
+    final today = DateTime.now();
+    final todayForecasts = forecasts.where((forecast) =>
+    forecast.dateTime.day == today.day &&
+        forecast.dateTime.month == today.month
+    ).toList();
+
+    bool willRain = todayForecasts.any((forecast) =>
+    forecast.precipitationType == PrecipitationType.rain ||
+        forecast.precipitationType == PrecipitationType.rainDrop
+    );
+
+    if (willRain && currentWeather.value?.precipitationType == PrecipitationType.none) {
+      // 현재는 안 비지만 오늘 비 예보가 있는 경우
+      weatherInfo.value = '🌧️ 오늘 오후 비 예보';
+      weatherAdvice.value = '우산을 챙기시고 조기 출발을 권장드려요';
+    }
   }
 
   // 교통 상황 초기화
@@ -177,23 +266,32 @@ class HomeController extends GetxController {
     }
   }
 
+  // 🆕 날씨 새로고침
+  Future<void> refreshWeather() async {
+    await _loadWeatherData();
+  }
+
   // 새로고침
   Future<void> refresh() async {
-    await _loadTodayData();
+    await Future.wait([
+      _loadTodayData(),
+      _loadWeatherData(), // 🆕 날씨도 함께 새로고침
+    ]);
+
     Get.snackbar(
       '새로고침 완료',
-      '최신 교통 정보를 불러왔습니다.',
+      '최신 교통 및 날씨 정보를 불러왔습니다.',
       snackPosition: SnackPosition.TOP,
       backgroundColor: Get.theme.primaryColor,
       colorText: Colors.white,
       margin: const EdgeInsets.all(16),
       borderRadius: 12,
-      duration: const Duration(seconds: 1),
+      duration: const Duration(seconds: 2),
       icon: const Icon(Icons.refresh, color: Colors.white),
     );
   }
 
-  // ===== 경로 상세 화면 네비게이션 메서드 추가 =====
+  // ===== 경로 상세 화면 네비게이션 메서드 =====
 
   // 출근 경로 상세 화면으로 이동
   void showCommuteRouteDetail() {
@@ -222,7 +320,7 @@ class HomeController extends GetxController {
   }
 }
 
-// 교통 상황 모델
+// 교통 상황 모델 (기존과 동일)
 class TransportStatus {
   final String name;
   final IconData icon;
