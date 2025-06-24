@@ -17,20 +17,21 @@ class OnboardingScreen extends GetView<OnboardingController> {
       backgroundColor: Get.theme.scaffoldBackgroundColor,
       resizeToAvoidBottomInset: true, // 키보드 올라올 때 화면 조정
       body: SafeArea(
-        child: Obx(() => Column(
-          children: [
-            // 상단 진행률 표시
-            _buildProgressHeader(),
+        child: Obx(() =>
+            Column(
+              children: [
+                // 상단 진행률 표시
+                _buildProgressHeader(),
 
-            // 메인 콘텐츠 영역
-            Expanded(
-              child: _buildStepContent(),
-            ),
+                // 메인 콘텐츠 영역
+                Expanded(
+                  child: _buildStepContent(),
+                ),
 
-            // 하단 네비게이션 버튼
-            _buildNavigationButtons(),
-          ],
-        )),
+                // 하단 네비게이션 버튼
+                _buildNavigationButtons(),
+              ],
+            )),
       ),
     );
   }
@@ -148,15 +149,20 @@ class OnboardingScreen extends GetView<OnboardingController> {
             width: double.infinity,
             height: 56,
             child: ElevatedButton(
-              onPressed: controller.canProceed ? () {
+              onPressed: controller.canProceed ? () async {
                 if (controller.currentStep.value == controller.totalSteps - 1) {
                   // 마지막 단계 - 완료
                   controller.nextStep();
                 } else {
-                  // 다음 단계로 이동
-                  controller.nextStep();
+                  // 🆕 각 단계별 특별 처리 로직 추가
+                  await _handleStepAction();
                 }
-              } : null,
+              } : () async {
+                // 🆕 canProceed가 false인 경우에도 위치 권한 단계에서는 권한 요청 실행
+                if (controller.currentStep.value == 1) {
+                  await controller.requestLocationPermission();
+                }
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Get.theme.primaryColor,
                 foregroundColor: Colors.white,
@@ -220,6 +226,26 @@ class OnboardingScreen extends GetView<OnboardingController> {
         ],
       ),
     );
+  }
+
+// 🆕 각 단계별 액션 처리 메서드 추가
+  Future<void> _handleStepAction() async {
+    switch (controller.currentStep.value) {
+      case 1: // 위치 권한 단계
+        if (!controller.locationPermissionGranted.value) {
+          // 위치 권한이 아직 허용되지 않았으면 권한 요청
+          await controller.requestLocationPermission();
+        } else {
+          // 이미 권한이 허용되었으면 다음 단계로
+          controller.nextStep();
+        }
+        break;
+
+      default:
+      // 다른 단계들은 기본적으로 다음 단계로 이동
+        controller.nextStep();
+        break;
+    }
   }
 
 // 🆕 버튼 텍스트 결정 (실제 GPS 상태 반영)
