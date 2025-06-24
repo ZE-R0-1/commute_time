@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../app/service/weather_service.dart';
+import '../../app/services/weather_service.dart';
 import 'home_controller.dart';
 
 class HomeScreen extends GetView<HomeController> {
@@ -136,30 +136,78 @@ class HomeScreen extends GetView<HomeController> {
       ),
     );
   }
-
-  // 날씨 알림 카드
+// 날씨 알림 카드 (GPS 위치 기반)
   Widget _buildWeatherCard() {
     return Obx(() => Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: controller.isWeatherLoading.value
+        color: controller.isLocationLoading.value || controller.isWeatherLoading.value
             ? Colors.grey[100]
             : Colors.yellow[100],
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: controller.isWeatherLoading.value
+          color: controller.isLocationLoading.value || controller.isWeatherLoading.value
               ? Colors.grey[200]!
               : Colors.yellow[200]!,
           width: 1,
         ),
       ),
-      child: controller.isWeatherLoading.value
+      child: controller.isLocationLoading.value
+          ? _buildLocationLoadingState()
+          : controller.isWeatherLoading.value
           ? _buildWeatherLoadingState()
           : _buildWeatherContent(),
     ));
   }
 
+// 위치 조회 로딩 상태
+  Widget _buildLocationLoadingState() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.blue,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                '📍 현재 위치 조회 중...',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'GPS를 이용해 정확한 위치를 확인하고 있습니다',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+            height: 1.4,
+          ),
+        ),
+      ],
+    );
+  }
 
 // 날씨 로딩 상태
   Widget _buildWeatherLoadingState() {
@@ -239,18 +287,35 @@ class HomeScreen extends GetView<HomeController> {
                 ),
               ),
             ),
-            // 🆕 새로고침 버튼 추가
-            InkWell(
-              onTap: controller.refreshWeather,
-              borderRadius: BorderRadius.circular(6),
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Icon(
-                  Icons.refresh,
-                  size: 20,
-                  color: Colors.grey[600],
+            // 🆕 위치 새로고침 버튼
+            Row(
+              children: [
+                InkWell(
+                  onTap: controller.refreshWeather,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(
+                      Icons.refresh,
+                      size: 18,
+                      color: Colors.grey[600],
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 4),
+                InkWell(
+                  onTap: controller.refreshLocation,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(
+                      Icons.location_searching,
+                      size: 18,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -334,7 +399,7 @@ class HomeScreen extends GetView<HomeController> {
         return Icons.ac_unit; // 눈
       case PrecipitationType.rainSnow:
       case PrecipitationType.rainSnowDrop:
-        return Icons.snowing; // 진눈깨비
+        return Icons.cloudy_snowing; // 진눈깨비
       default:
         break;
     }
@@ -344,7 +409,7 @@ class HomeScreen extends GetView<HomeController> {
       case SkyCondition.clear:
         return Icons.wb_sunny; // 맑음
       case SkyCondition.partlyCloudy:
-        return Icons.cloud_sharp; // 구름많음
+        return Icons.wb_cloudy; // 구름많음
       case SkyCondition.cloudy:
         return Icons.wb_cloudy; // 흐림
     }

@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+// 🆕 실제 위치 서비스 import
+import '../../app/services/location_service.dart';
 import '../../app/routes/app_pages.dart';
 
 class OnboardingController extends GetxController {
@@ -22,7 +24,11 @@ class OnboardingController extends GetxController {
   final RxString workAddress = ''.obs;
   final Rx<TimeOfDay?> workStartTime = Rx<TimeOfDay?>(null);
   final Rx<TimeOfDay?> workEndTime = Rx<TimeOfDay?>(null);
+
+  // 🆕 실제 위치 권한 및 정보
   final RxBool locationPermissionGranted = false.obs;
+  final Rx<UserLocation?> currentLocation = Rx<UserLocation?>(null);
+  final RxBool isLocationLoading = false.obs;
 
   // 로딩 상태
   final RxBool isLoading = false.obs;
@@ -83,35 +89,65 @@ class OnboardingController extends GetxController {
     }
   }
 
-  // 위치 권한 요청
+  // 🆕 실제 위치 권한 요청 및 현재 위치 조회
   Future<void> requestLocationPermission() async {
     try {
-      isLoading.value = true;
+      isLocationLoading.value = true;
+      print('=== 실제 GPS 권한 요청 시작 ===');
 
-      // Mock: 권한 요청 시뮬레이션
-      await Future.delayed(const Duration(seconds: 1));
+      // 1. 위치 권한 확인 및 요청
+      final permissionResult = await LocationService.checkLocationPermission();
 
-      final status = await Permission.location.request();
+      if (!permissionResult.success) {
+        // 권한 요청 실패
+        print('위치 권한 실패: ${permissionResult.message}');
 
-      if (status.isGranted) {
-        locationPermissionGranted.value = true;
+        // 사용자에게 상세한 안내
+        _showLocationPermissionDialog(permissionResult);
+        return;
+      }
+
+      // 2. 권한 성공 - 현재 위치 조회
+      print('위치 권한 성공 - 현재 위치 조회 시작');
+      locationPermissionGranted.value = true;
+
+      final location = await LocationService.getCurrentLocation();
+
+      if (location != null) {
+        currentLocation.value = location;
+
+        // 저장소에 위치 정보 저장
+        await _storage.write('current_latitude', location.latitude);
+        await _storage.write('current_longitude', location.longitude);
+        await _storage.write('current_address', location.address);
+        await _storage.write('location_permission_granted', true);
+        await _storage.write('location_updated_at', DateTime.now().toIso8601String());
+
+        print('현재 위치 저장 완료:');
+        print('- 주소: ${location.address}');
+        print('- 좌표: ${location.latitude}, ${location.longitude}');
+        print('- 정확도: ${location.accuracyText}');
+
+        // 성공 메시지
         Get.snackbar(
-          '권한 허용',
-          '위치 서비스를 사용할 수 있습니다.',
+          '위치 확인 완료! 📍',
+          '${location.address}\n${location.accuracyText}',
           snackPosition: SnackPosition.TOP,
           backgroundColor: Colors.green,
           colorText: Colors.white,
           margin: const EdgeInsets.all(16),
           borderRadius: 12,
-          duration: const Duration(seconds: 2),
-          icon: const Icon(Icons.check_circle, color: Colors.white),
+          duration: const Duration(seconds: 3),
+          icon: const Icon(Icons.location_on, color: Colors.white),
         );
+
       } else {
-        // Mock: 거부되어도 일단 진행 가능하게
-        locationPermissionGranted.value = true;
+        // 위치 조회 실패시에도 권한은 허용된 상태
+        print('위치 조회 실패 - 기본 설정으로 진행');
+
         Get.snackbar(
-          '권한 설정',
-          '위치 권한은 나중에 설정할 수 있습니다.',
+          '위치 권한 허용됨',
+          '현재 위치 조회에 실패했지만\n나중에 다시 시도할 수 있습니다.',
           snackPosition: SnackPosition.TOP,
           backgroundColor: Colors.orange,
           colorText: Colors.white,
@@ -121,16 +157,119 @@ class OnboardingController extends GetxController {
           icon: const Icon(Icons.info_outline, color: Colors.white),
         );
       }
+
     } catch (e) {
-      // Mock: 에러 발생시에도 진행 가능
-      locationPermissionGranted.value = true;
       print('위치 권한 요청 오류: $e');
+
+      // 오류 발생해도 진행은 가능하게
+      locationPermissionGranted.value = true;
+
+      Get.snackbar(
+        '위치 설정',
+        '위치 권한은 나중에 설정할 수 있습니다.',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+        margin: const EdgeInsets.all(16),
+        borderRadius: 12,
+        duration: const Duration(seconds: 2),
+        icon: const Icon(Icons.info_outline, color: Colors.white),
+      );
     } finally {
-      isLoading.value = false;
+      isLocationLoading.value = false;
     }
   }
 
-  // 주소 검색 (Mock)
+  // 🆕 위치 권한 다이얼로그 (상세 안내)
+  void _showLocationPermissionDialog(LocationPermissionResult result) {
+    Get.dialog(
+      AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              Icons.location_on,
+              color: Get.theme.primaryColor,
+              size: 24,
+            ),
+            const SizedBox(width: 8),
+            const Text('위치 권한 필요'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(result.message),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '위치 권한이 필요한 이유:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blue[700],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('• 현재 위치 날씨 정보 제공'),
+                  const Text('• 출퇴근 경로 최적화'),
+                  const Text('• 실시간 교통 상황 안내'),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Get.back();
+              // 권한 없이도 진행 가능
+              locationPermissionGranted.value = true;
+
+              Get.snackbar(
+                '위치 권한 건너뛰기',
+                '나중에 설정에서 권한을 허용할 수 있습니다.',
+                snackPosition: SnackPosition.TOP,
+                backgroundColor: Colors.grey[600],
+                colorText: Colors.white,
+                margin: const EdgeInsets.all(16),
+                borderRadius: 12,
+                duration: const Duration(seconds: 2),
+              );
+            },
+            child: const Text('나중에'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Get.back();
+              if (result.errorType == LocationErrorType.permissionDeniedForever) {
+                // 설정 페이지로 이동
+                LocationService.checkLocationPermission().then((newResult) {
+                  if (newResult.success) {
+                    requestLocationPermission();
+                  }
+                });
+              } else {
+                // 권한 재요청
+                requestLocationPermission();
+              }
+            },
+            child: const Text('권한 허용'),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
+  }
+
+  // 주소 검색 (Mock - 나중에 카카오맵 API로 교체)
   Future<List<String>> searchAddress(String query) async {
     if (query.isEmpty) return [];
 
@@ -177,7 +316,7 @@ class OnboardingController extends GetxController {
     try {
       isLoading.value = true;
 
-      // 온보딩 데이터 저장
+      // 🆕 위치 정보 포함 온보딩 데이터 저장
       await _storage.write('onboarding_completed', true);
       await _storage.write('home_address', homeAddress.value);
       await _storage.write('work_address', workAddress.value);
@@ -186,10 +325,24 @@ class OnboardingController extends GetxController {
       await _storage.write('location_permission', locationPermissionGranted.value);
       await _storage.write('onboarding_completed_at', DateTime.now().toIso8601String());
 
+      // 현재 위치 정보가 있으면 저장 (이미 저장되어 있지만 확인차)
+      final location = currentLocation.value;
+      if (location != null) {
+        await _storage.write('has_current_location', true);
+        print('위치 정보 포함 온보딩 완료');
+      } else {
+        await _storage.write('has_current_location', false);
+        print('위치 정보 없이 온보딩 완료');
+      }
+
       print('=== 온보딩 완료 ===');
       print('집 주소: ${homeAddress.value}');
       print('회사 주소: ${workAddress.value}');
       print('근무시간: ${_timeToString(workStartTime.value)} ~ ${_timeToString(workEndTime.value)}');
+      print('위치 권한: ${locationPermissionGranted.value}');
+      if (location != null) {
+        print('현재 위치: ${location.address}');
+      }
 
       // 완료 메시지
       Get.snackbar(
@@ -261,7 +414,7 @@ class OnboardingController extends GetxController {
       case 0:
         return '스마트한 출퇴근 관리로\n더 편리한 일상을 만들어보세요.';
       case 1:
-        return '출퇴근 경로와 실시간 교통상황을\n제공하기 위해 위치 권한이 필요합니다.';
+        return '현재 위치 기반 날씨 정보와\n출퇴근 경로 안내를 위해 위치 권한이 필요합니다.';
       case 2:
         return '출근 시 최적의 경로를 안내하기 위해\n집 주소를 입력해주세요.';
       case 3:

@@ -36,12 +36,12 @@ void main() async {
   storage.write('work_start_time', '09:00');
   storage.write('work_end_time', '18:00');
 
-  // 🆕 테스트용 위치 정보 (강남역 좌표)
-  storage.write('home_latitude', 37.498095);
-  storage.write('home_longitude', 127.027610);
+  // 🆕 위치 정보는 GPS로 자동 조회하도록 변경
+  // storage.write('home_latitude', 37.498095);  // 제거됨
+  // storage.write('home_longitude', 127.027610); // 제거됨
 
   // 다른 테스트 시나리오들 (필요시 주석 해제)
-  // storage.erase(); // 모든 데이터 삭제 (첫 실행 테스트)
+  storage.erase(); // 모든 데이터 삭제 (첫 실행 테스트)
   // storage.write('is_logged_in', false); // 로그인 화면 테스트
   // storage.write('is_logged_in', true);
   // storage.write('onboarding_completed', false); // 온보딩 화면 테스트

@@ -222,7 +222,7 @@ class OnboardingScreen extends GetView<OnboardingController> {
     );
   }
 
-  // 버튼 텍스트 결정
+// 🆕 버튼 텍스트 결정 (실제 GPS 상태 반영)
   String _getButtonText() {
     if (controller.currentStep.value == controller.totalSteps - 1) {
       return '설정 완료 🎉';
@@ -232,9 +232,13 @@ class OnboardingScreen extends GetView<OnboardingController> {
       case 0:
         return '시작하기';
       case 1:
-        return controller.locationPermissionGranted.value
-            ? '다음 단계'
-            : '위치 권한 허용';
+        if (controller.isLocationLoading.value) {
+          return '위치 확인 중...';
+        } else if (controller.locationPermissionGranted.value) {
+          return '다음 단계 →';
+        } else {
+          return '📍 위치 권한 허용';
+        }
       default:
         return '다음 단계';
     }
