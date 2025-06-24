@@ -8,195 +8,215 @@ class StepHomeAddress extends GetView<OnboardingController> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          const SizedBox(height: 40),
+          // 🆕 집 아이콘
+          _buildHomeIcon(),
 
-          // 집 아이콘
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.green,
-                  Colors.green.withValues(alpha: 0.7),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.green.withValues(alpha: 0.3),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8),
+          // 제목과 설명을 하나로 묶어서 간격 절약
+          Column(
+            children: [
+              Text(
+                '집 주소 설정하기 🏠',
+                style: Get.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  height: 1.2,
+                  fontSize: 24,
                 ),
-              ],
-            ),
-            child: const Icon(
-              Icons.home,
-              size: 40,
-              color: Colors.white,
-            ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '집에서 출발하는 최적의 경로를\n안내해드릴게요',
+                style: Get.textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[600],
+                  height: 1.3,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
 
-          const SizedBox(height: 32),
+          // 🆕 현재 설정된 주소 또는 입력 필드
+          Obx(() => _buildAddressSection()),
 
-          // 제목
-          Text(
-            controller.currentStepTitle,
-            style: Get.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              height: 1.2,
-            ),
-            textAlign: TextAlign.center,
-          ),
+          // 🆕 간단한 도움말
+          _buildHelpMessage(),
 
-          const SizedBox(height: 16),
-
-          // 설명
-          Text(
-            controller.currentStepDescription,
-            style: Get.textTheme.bodyLarge?.copyWith(
-              color: Colors.grey[600],
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: 40),
-
-          // 주소 검색 입력
-          _buildAddressSearch(),
-
-          const SizedBox(height: 20),
-
-          // 주소 결과 표시
-          _buildAddressResults(),
-
-          // 하단 여백 (키보드 올라올 때 대비)
-          const SizedBox(height: 100),
+          // 🆕 혜택 안내
+          _buildBenefitMessage(),
         ],
       ),
     );
   }
 
-  Widget _buildAddressSearch() {
-    final TextEditingController searchController = TextEditingController();
-    final RxList<String> searchResults = <String>[].obs;
-    final RxBool isSearching = false.obs;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 현재 설정된 주소 표시
-        Obx(() => controller.homeAddress.value.isNotEmpty
-            ? Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            color: Colors.green[50],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Colors.green[200]!,
-              width: 1,
-            ),
+  // 집 아이콘
+  Widget _buildHomeIcon() {
+    return Container(
+      width: 80,
+      height: 80,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.green,
+            Colors.green.withValues(alpha: 0.7),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          child: Row(
+        ],
+      ),
+      child: const Icon(
+        Icons.home,
+        size: 40,
+        color: Colors.white,
+      ),
+    );
+  }
+
+  // 🆕 주소 섹션 (설정된 주소 표시 또는 입력 필드)
+  Widget _buildAddressSection() {
+    if (controller.homeAddress.value.isNotEmpty) {
+      return _buildSetAddress();
+    } else {
+      return _buildAddressInput();
+    }
+  }
+
+  // 설정된 주소 표시
+  Widget _buildSetAddress() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.green[200]!,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
             children: [
               Icon(
                 Icons.check_circle,
                 color: Colors.green[600],
                 size: 20,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  controller.homeAddress.value,
-                  style: Get.textTheme.bodyMedium?.copyWith(
-                    color: Colors.green[700],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  controller.setHomeAddress('');
-                  searchController.clear();
-                  searchResults.clear();
-                },
-                child: Text(
-                  '변경',
-                  style: TextStyle(
-                    color: Colors.green[600],
-                    fontSize: 12,
-                  ),
+              const SizedBox(width: 8),
+              Text(
+                '집 주소 설정 완료',
+                style: Get.textTheme.bodySmall?.copyWith(
+                  color: Colors.green[700],
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
-        )
-            : const SizedBox.shrink()
-        ),
-
-        // 주소 검색 입력 필드
-        if (controller.homeAddress.value.isEmpty)
-          TextFormField(
-            controller: searchController,
-            decoration: InputDecoration(
-              labelText: '집 주소 검색',
-              hintText: '예: 서울특별시 강남구 테헤란로',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: Obx(() => isSearching.value
-                  ? const Padding(
-                padding: EdgeInsets.all(12),
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              )
-                  : const SizedBox.shrink()
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey[300]!),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Get.theme.primaryColor),
+          const SizedBox(height: 8),
+          Text(
+            controller.homeAddress.value,
+            style: Get.textTheme.bodyMedium?.copyWith(
+              color: Colors.green[800],
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () {
+              controller.setHomeAddress('');
+            },
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              minimumSize: Size.zero,
+            ),
+            child: Text(
+              '주소 변경',
+              style: TextStyle(
+                color: Colors.green[600],
+                fontSize: 12,
               ),
             ),
-            onChanged: (value) async {
-              if (value.length > 2) {
-                isSearching.value = true;
-                final results = await controller.searchAddress(value);
-                searchResults.value = results;
-                isSearching.value = false;
-              } else {
-                searchResults.clear();
-              }
-            },
           ),
+        ],
+      ),
+    );
+  }
 
-        // 검색 결과를 여기에 표시
-        if (controller.homeAddress.value.isEmpty)
-          Obx(() => _buildSearchResults(searchResults, isSearching)),
+  // 주소 입력 필드
+  Widget _buildAddressInput() {
+    final TextEditingController searchController = TextEditingController();
+    final RxList<String> searchResults = <String>[].obs;
+    final RxBool isSearching = false.obs;
+
+    return Column(
+      children: [
+        // 주소 검색 입력 필드
+        TextFormField(
+          controller: searchController,
+          decoration: InputDecoration(
+            labelText: '집 주소를 입력하세요',
+            hintText: '예: 서울특별시 강남구',
+            prefixIcon: Icon(
+              Icons.search,
+              color: Colors.green[600],
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.green[600]!),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+          ),
+          onChanged: (value) async {
+            if (value.length > 2) {
+              isSearching.value = true;
+              final results = await controller.searchAddress(value);
+              searchResults.value = results.take(3).toList(); // 최대 3개만
+              isSearching.value = false;
+            } else {
+              searchResults.clear();
+            }
+          },
+        ),
+
+        // 🆕 간단한 검색 결과 (최대 3개, 컴팩트)
+        Obx(() => _buildCompactSearchResults(searchResults, isSearching)),
       ],
     );
   }
 
-  Widget _buildSearchResults(RxList<String> searchResults, RxBool isSearching) {
+  // 🆕 컴팩트한 검색 결과
+  Widget _buildCompactSearchResults(RxList<String> searchResults, RxBool isSearching) {
     if (isSearching.value) {
       return Container(
-        height: 100,
-        margin: const EdgeInsets.only(top: 12),
+        margin: const EdgeInsets.only(top: 8),
+        height: 40,
         child: const Center(
-          child: CircularProgressIndicator(),
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
         ),
       );
     }
@@ -206,29 +226,29 @@ class StepHomeAddress extends GetView<OnboardingController> {
     }
 
     return Container(
-      constraints: const BoxConstraints(
-        maxHeight: 300, // 최대 높이 제한
-        minHeight: 50,
-      ),
-      margin: const EdgeInsets.only(top: 12),
+      margin: const EdgeInsets.only(top: 8),
+      constraints: const BoxConstraints(maxHeight: 120),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey[300]!),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: ListView.builder(
-        shrinkWrap: true, // 내용에 맞춰 높이 조절
+        shrinkWrap: true,
         itemCount: searchResults.length,
         itemBuilder: (context, index) {
           final address = searchResults[index];
           return ListTile(
+            dense: true,
             leading: Icon(
               Icons.location_on,
-              color: Get.theme.primaryColor,
-              size: 20,
+              color: Colors.green[600],
+              size: 16,
             ),
             title: Text(
               address,
-              style: Get.textTheme.bodyMedium,
+              style: Get.textTheme.bodySmall?.copyWith(fontSize: 12),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             onTap: () {
               controller.setHomeAddress(address);
@@ -240,38 +260,29 @@ class StepHomeAddress extends GetView<OnboardingController> {
     );
   }
 
-  Widget _buildAddressResults() {
-    return Obx(() {
-      if (controller.homeAddress.value.isNotEmpty) {
-        return _buildAddressPreview();
-      } else {
-        return _buildEmptyState();
-      }
-    });
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+  // 🆕 간단한 도움말
+  Widget _buildHelpMessage() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.blue[50],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
         children: [
           Icon(
-            Icons.search,
-            size: 48,
-            color: Colors.grey[400],
+            Icons.lightbulb_outline,
+            size: 16,
+            color: Colors.blue[600],
           ),
-          const SizedBox(height: 16),
-          Text(
-            '주소를 검색해보세요',
-            style: Get.textTheme.bodyLarge?.copyWith(
-              color: Colors.grey[500],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '예: 서울특별시, 강남구, 테헤란로',
-            style: Get.textTheme.bodyMedium?.copyWith(
-              color: Colors.grey[400],
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '구체적인 주소일수록 더 정확한 경로를 안내받을 수 있어요',
+              style: Get.textTheme.bodySmall?.copyWith(
+                color: Colors.blue[700],
+                fontSize: 11,
+              ),
             ),
           ),
         ],
@@ -279,38 +290,31 @@ class StepHomeAddress extends GetView<OnboardingController> {
     );
   }
 
-  Widget _buildAddressPreview() {
+  // 🆕 혜택 안내 메시지
+  Widget _buildBenefitMessage() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.grey[200]!,
-          width: 1,
-        ),
+        color: Colors.green[50],
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Column(
+      child: Row(
         children: [
           Icon(
-            Icons.map,
-            size: 48,
-            color: Colors.grey[400],
+            Icons.route,
+            size: 16,
+            color: Colors.green[600],
           ),
-          const SizedBox(height: 16),
-          Text(
-            '지도 미리보기',
-            style: Get.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '🚗 집에서 회사까지 최적 경로와 소요시간을 계산해드려요',
+              style: Get.textTheme.bodySmall?.copyWith(
+                color: Colors.green[700],
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '실제 서비스에서는 설정한 주소의\n지도를 미리 볼 수 있습니다.',
-            style: Get.textTheme.bodyMedium?.copyWith(
-              color: Colors.grey[600],
-            ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),

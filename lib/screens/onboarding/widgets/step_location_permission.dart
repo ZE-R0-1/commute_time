@@ -8,61 +8,52 @@ class StepLocationPermission extends GetView<OnboardingController> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          // 최소 높이 확보로 중앙 정렬 효과
-          SizedBox(
-            height: MediaQuery.of(context).size.height * 0.05,
-          ),
-
-          // 위치 아이콘 애니메이션
+          // 🆕 상단 여백 없이 바로 위치 아이콘
           _buildLocationIcon(),
 
-          const SizedBox(height: 48),
-
-          // 제목
-          Text(
-            controller.currentStepTitle,
-            style: Get.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              height: 1.2,
-            ),
-            textAlign: TextAlign.center,
+          // 제목과 설명을 하나로 묶어서 간격 절약
+          Column(
+            children: [
+              Text(
+                '위치 기반 서비스\n허용하기 📍',
+                style: Get.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  height: 1.2,
+                  fontSize: 24,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '현재 위치를 확인하여\n더 정확한 출퇴근 정보를 제공해드려요',
+                style: Get.textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[600],
+                  height: 1.3,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
 
-          const SizedBox(height: 24),
+          // 🆕 간소화된 위치 서비스 혜택 (3개 아이콘)
+          _buildLocationBenefits(),
 
-          // 설명
-          Text(
-            controller.currentStepDescription,
-            style: Get.textTheme.bodyLarge?.copyWith(
-              color: Colors.grey[600],
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: 48),
-
-          // 권한 필요 이유 설명
-          _buildPermissionReasons(),
-
-          const SizedBox(height: 32),
-
-          // 🆕 실제 권한 상태 및 위치 정보 표시
+          // 🆕 현재 위치 권한 상태 표시
           Obx(() => _buildPermissionStatus()),
 
-          // 하단 여백
-          const SizedBox(height: 80),
+          // 🆕 안심 메시지
+          _buildPrivacyMessage(),
         ],
       ),
     );
   }
 
-  // 위치 아이콘 애니메이션
+  // 위치 아이콘 (기존과 동일하지만 크기 조정)
   Widget _buildLocationIcon() {
     return Obx(() {
       if (controller.isLocationLoading.value) {
@@ -75,17 +66,16 @@ class StepLocationPermission extends GetView<OnboardingController> {
     });
   }
 
-  // 기본 위치 아이콘
   Widget _buildDefaultIcon() {
     return TweenAnimationBuilder<double>(
       duration: const Duration(milliseconds: 1000),
       tween: Tween(begin: 0.0, end: 1.0),
       builder: (context, value, child) {
         return Transform.scale(
-          scale: 0.8 + (0.2 * value),
+          scale: 0.7 + (0.3 * value),
           child: Container(
-            width: 120,
-            height: 120,
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -99,14 +89,14 @@ class StepLocationPermission extends GetView<OnboardingController> {
               boxShadow: [
                 BoxShadow(
                   color: Colors.blue.withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: const Icon(
               Icons.location_on,
-              size: 60,
+              size: 40,
               color: Colors.white,
             ),
           ),
@@ -115,11 +105,10 @@ class StepLocationPermission extends GetView<OnboardingController> {
     );
   }
 
-  // 로딩 아이콘
   Widget _buildLoadingIcon() {
     return Container(
-      width: 120,
-      height: 120,
+      width: 80,
+      height: 80,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -133,8 +122,8 @@ class StepLocationPermission extends GetView<OnboardingController> {
         boxShadow: [
           BoxShadow(
             color: Colors.orange.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -142,16 +131,16 @@ class StepLocationPermission extends GetView<OnboardingController> {
         alignment: Alignment.center,
         children: [
           const SizedBox(
-            width: 80,
-            height: 80,
+            width: 60,
+            height: 60,
             child: CircularProgressIndicator(
               color: Colors.white,
-              strokeWidth: 4,
+              strokeWidth: 2,
             ),
           ),
           const Icon(
             Icons.gps_fixed,
-            size: 40,
+            size: 28,
             color: Colors.white,
           ),
         ],
@@ -159,7 +148,6 @@ class StepLocationPermission extends GetView<OnboardingController> {
     );
   }
 
-  // 성공 아이콘
   Widget _buildSuccessIcon() {
     return TweenAnimationBuilder<double>(
       duration: const Duration(milliseconds: 800),
@@ -168,8 +156,8 @@ class StepLocationPermission extends GetView<OnboardingController> {
         return Transform.scale(
           scale: value,
           child: Container(
-            width: 120,
-            height: 120,
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -183,14 +171,14 @@ class StepLocationPermission extends GetView<OnboardingController> {
               boxShadow: [
                 BoxShadow(
                   color: Colors.green.withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: const Icon(
               Icons.location_on,
-              size: 60,
+              size: 40,
               color: Colors.white,
             ),
           ),
@@ -199,92 +187,66 @@ class StepLocationPermission extends GetView<OnboardingController> {
     );
   }
 
-  Widget _buildPermissionReasons() {
-    final reasons = [
-      {
-        'icon': Icons.wb_cloudy,
-        'text': '현재 위치 기반 실시간 날씨 정보',
-      },
-      {
-        'icon': Icons.route,
-        'text': '최적 출퇴근 경로 계산',
-      },
-      {
-        'icon': Icons.traffic,
-        'text': '실시간 교통 상황 및 소요시간 예측',
-      },
-      {
-        'icon': Icons.notifications_active,
-        'text': '위치 기반 스마트 알림',
-      },
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.grey[200]!,
-          width: 1,
+  // 🆕 간소화된 위치 서비스 혜택
+  Widget _buildLocationBenefits() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _buildBenefitIcon(
+          icon: Icons.wb_cloudy,
+          label: '실시간\n날씨',
+          color: Colors.blue,
         ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.info_outline,
-                color: Get.theme.primaryColor,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '위치 서비스로 제공되는 기능',
-                style: Get.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Get.theme.primaryColor,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ...reasons.map((reason) =>
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Get.theme.primaryColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        reason['icon'] as IconData,
-                        size: 16,
-                        color: Get.theme.primaryColor,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        reason['text'] as String,
-                        style: Get.textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ).toList(),
-        ],
-      ),
+        _buildBenefitIcon(
+          icon: Icons.route,
+          label: '최적\n경로',
+          color: Colors.green,
+        ),
+        _buildBenefitIcon(
+          icon: Icons.traffic,
+          label: '교통\n상황',
+          color: Colors.orange,
+        ),
+      ],
     );
   }
 
-  // 🆕 실제 권한 상태 표시
+  Widget _buildBenefitIcon({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            color: color,
+            size: 20,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: Get.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w500,
+            color: Colors.grey[700],
+            height: 1.1,
+            fontSize: 11,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  // 🆕 간소화된 권한 상태 표시
   Widget _buildPermissionStatus() {
     if (controller.isLocationLoading.value) {
       return _buildLoadingStatus();
@@ -295,7 +257,6 @@ class StepLocationPermission extends GetView<OnboardingController> {
     }
   }
 
-  // 권한 요청 대기 상태
   Widget _buildPendingStatus() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -310,16 +271,17 @@ class StepLocationPermission extends GetView<OnboardingController> {
       child: Row(
         children: [
           Icon(
-            Icons.location_searching,
+            Icons.info_outline,
             color: Colors.blue[600],
-            size: 24,
+            size: 20,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              '위치 권한을 허용하면 더 정확한\n맞춤 서비스를 이용할 수 있습니다.',
+              '정확한 위치 기반 서비스를 위해\n위치 권한이 필요해요',
               style: Get.textTheme.bodyMedium?.copyWith(
                 color: Colors.blue[700],
+                height: 1.3,
               ),
             ),
           ),
@@ -328,7 +290,6 @@ class StepLocationPermission extends GetView<OnboardingController> {
     );
   }
 
-  // 권한 요청 중 상태
   Widget _buildLoadingStatus() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -343,8 +304,8 @@ class StepLocationPermission extends GetView<OnboardingController> {
       child: Row(
         children: [
           SizedBox(
-            width: 24,
-            height: 24,
+            width: 20,
+            height: 20,
             child: CircularProgressIndicator(
               color: Colors.orange[600],
               strokeWidth: 2,
@@ -353,7 +314,7 @@ class StepLocationPermission extends GetView<OnboardingController> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              '현재 위치를 확인하고 있습니다...\n잠시만 기다려주세요.',
+              '현재 위치를 확인하고 있어요...',
               style: Get.textTheme.bodyMedium?.copyWith(
                 color: Colors.orange[700],
               ),
@@ -364,10 +325,7 @@ class StepLocationPermission extends GetView<OnboardingController> {
     );
   }
 
-  // 권한 허용 완료 상태
   Widget _buildSuccessStatus() {
-    final location = controller.currentLocation.value;
-
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -378,77 +336,53 @@ class StepLocationPermission extends GetView<OnboardingController> {
           width: 1,
         ),
       ),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.check_circle,
-                color: Colors.green[600],
-                size: 24,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  '위치 권한이 허용되었습니다! 🎉',
-                  style: Get.textTheme.bodyMedium?.copyWith(
-                    color: Colors.green[700],
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
+          Icon(
+            Icons.check_circle,
+            color: Colors.green[600],
+            size: 20,
           ),
-
-          // 현재 위치 정보 표시 (있는 경우)
-          if (location != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on,
-                        size: 16,
-                        color: Colors.green[600],
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '현재 위치',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.green[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    location.address,
-                    style: Get.textTheme.bodySmall?.copyWith(
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    location.accuracyText,
-                    style: Get.textTheme.bodySmall?.copyWith(
-                      color: Colors.grey[600],
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              '위치 권한이 허용되었어요! 🎉',
+              style: Get.textTheme.bodyMedium?.copyWith(
+                color: Colors.green[700],
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🆕 개인정보 안심 메시지
+  Widget _buildPrivacyMessage() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.security,
+            size: 14,
+            color: Colors.grey[600],
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '위치 정보는 안전하게 보호되며, 서비스 제공 목적으로만 사용됩니다',
+              style: Get.textTheme.bodySmall?.copyWith(
+                color: Colors.grey[600],
+                fontSize: 11,
+              ),
+            ),
+          ),
         ],
       ),
     );

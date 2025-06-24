@@ -205,24 +205,29 @@ class OnboardingScreen extends GetView<OnboardingController> {
             ),
           ),
 
-          // 건너뛰기 버튼 (위치 권한 단계에서만)
-          if (controller.currentStep.value == 1)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: TextButton(
-                onPressed: () {
-                  controller.locationPermissionGranted.value = true;
-                  controller.nextStep();
-                },
-                child: Text(
-                  '나중에 설정하기',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
+          // 🆕 수정: 건너뛰기 버튼 (위치 권한 단계이면서 권한이 허용되지 않았을 때만)
+          Obx(() {
+            if (controller.currentStep.value == 1 &&
+                !controller.locationPermissionGranted.value) {
+              return Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: TextButton(
+                  onPressed: () {
+                    controller.locationPermissionGranted.value = true;
+                    controller.nextStep();
+                  },
+                  child: Text(
+                    '나중에 설정하기',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
+                    ),
                   ),
                 ),
-              ),
-            ),
+              );
+            }
+            return const SizedBox.shrink(); // 조건에 맞지 않으면 빈 위젯 반환
+          }),
         ],
       ),
     );
@@ -261,7 +266,7 @@ class OnboardingScreen extends GetView<OnboardingController> {
         if (controller.isLocationLoading.value) {
           return '위치 확인 중...';
         } else if (controller.locationPermissionGranted.value) {
-          return '다음 단계 →';
+          return '다음 단계';
         } else {
           return '📍 위치 권한 허용';
         }
