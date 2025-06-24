@@ -51,11 +51,12 @@ class MainTabController extends GetxController {
     }
   }
 
-  // 탭 변경 시 실행되는 로직
+  // 탭 변경 시 실행되는 로직 (🚫 자동 새로고침 제거)
   void _onTabChanged(int newIndex) {
     switch (newIndex) {
       case 0: // 홈
-        _refreshHomeData();
+      // 🚫 자동 새로고침 제거 - _refreshHomeData() 호출 안함
+        print('홈 탭으로 이동 (자동 새로고침 없음)');
         break;
       case 1: // 지도
         _initializeMapData();
@@ -69,17 +70,16 @@ class MainTabController extends GetxController {
     }
   }
 
-  // 각 탭별 데이터 로딩 메서드들
-  void _refreshHomeData() {
-    print('홈 화면 데이터 새로고침');
-    // HomeController가 있다면 새로고침 트리거
-    try {
-      final homeController = Get.find<HomeController>();
-      homeController.refresh();
-    } catch (e) {
-      // HomeController가 없으면 무시
-    }
-  }
+  // 🚫 홈 화면 자동 새로고침 제거
+  // void _refreshHomeData() {
+  //   print('홈 화면 데이터 새로고침');
+  //   try {
+  //     final homeController = Get.find<HomeController>();
+  //     homeController.refresh();
+  //   } catch (e) {
+  //     // HomeController가 없으면 무시
+  //   }
+  // }
 
   void _initializeMapData() {
     print('지도 데이터 초기화');

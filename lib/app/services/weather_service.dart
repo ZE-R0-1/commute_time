@@ -122,6 +122,135 @@ class WeatherService {
     }
   }
 
+  // 🆕 오늘의 상세 비 예보 분석
+  static RainForecastInfo? analyzeTodayRainForecast(List<WeatherForecast> forecasts) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // 오늘 예보만 필터링
+    final todayForecasts = forecasts.where((forecast) =>
+    forecast.dateTime.year == today.year &&
+        forecast.dateTime.month == today.month &&
+        forecast.dateTime.day == today.day &&
+        forecast.dateTime.isAfter(now) // 현재 시간 이후만
+    ).toList();
+
+    if (todayForecasts.isEmpty) return null;
+
+    // 비가 오는 시간대 찾기
+    List<WeatherForecast> rainForecasts = todayForecasts.where((forecast) =>
+    forecast.precipitationType == PrecipitationType.rain ||
+        forecast.precipitationType == PrecipitationType.rainDrop ||
+        forecast.precipitationType == PrecipitationType.rainSnow ||
+        forecast.precipitationType == PrecipitationType.rainSnowDrop
+    ).toList();
+
+    if (rainForecasts.isEmpty) {
+      return RainForecastInfo(
+        willRain: false,
+        message: '오늘은 비 소식이 없어요',
+        advice: '쾌적한 하루 되세요!',
+      );
+    }
+
+    // 첫 번째 비 시작 시간
+    final firstRain = rainForecasts.first;
+    final startTime = firstRain.dateTime;
+
+    // 비가 끝나는 시간 (연속되지 않는 첫 번째 시점)
+    DateTime? endTime;
+    for (int i = 0; i < todayForecasts.length - 1; i++) {
+      final current = todayForecasts[i];
+      final next = todayForecasts[i + 1];
+
+      // 현재는 비, 다음은 비 아님
+      if (_isRaining(current) && !_isRaining(next)) {
+        endTime = next.dateTime;
+        break;
+      }
+    }
+
+    return RainForecastInfo(
+      willRain: true,
+      startTime: startTime,
+      endTime: endTime,
+      message: _generateRainMessage(startTime, endTime, now),
+      advice: _generateRainAdvice(startTime, now),
+      intensity: _getRainIntensity(rainForecasts),
+    );
+  }
+
+  // 🆕 비 오는지 확인 헬퍼 함수
+  static bool _isRaining(WeatherForecast forecast) {
+    return forecast.precipitationType == PrecipitationType.rain ||
+        forecast.precipitationType == PrecipitationType.rainDrop ||
+        forecast.precipitationType == PrecipitationType.rainSnow ||
+        forecast.precipitationType == PrecipitationType.rainSnowDrop;
+  }
+
+  // 🆕 비 예보 메시지 생성
+  static String _generateRainMessage(DateTime startTime, DateTime? endTime, DateTime now) {
+    final hour = startTime.hour;
+    final minute = startTime.minute;
+
+    String timeMessage;
+    if (hour < 12) {
+      timeMessage = '오전 ${hour}시';
+    } else if (hour == 12) {
+      timeMessage = '정오';
+    } else if (hour < 18) {
+      timeMessage = '오후 ${hour - 12}시';
+    } else {
+      timeMessage = '저녁 ${hour - 12}시';
+    }
+
+    if (minute > 0) {
+      timeMessage += ' ${minute}분';
+    }
+
+    String durationMessage = '';
+    if (endTime != null) {
+      final duration = endTime.difference(startTime).inHours;
+      if (duration > 0) {
+        durationMessage = ' (약 ${duration}시간)';
+      }
+    }
+
+    return '🌧️ ${timeMessage}부터 비 예보$durationMessage';
+  }
+
+  // 🆕 비 예보 조언 생성
+  static String _generateRainAdvice(DateTime startTime, DateTime now) {
+    final hoursUntilRain = startTime.difference(now).inHours;
+
+    if (hoursUntilRain <= 1) {
+      return '곧 비가 시작돼요! 우산을 미리 준비하세요';
+    } else if (hoursUntilRain <= 3) {
+      return '우산을 챙기시고 일찍 출발하는 것을 권장드려요';
+    } else if (hoursUntilRain <= 6) {
+      return '오늘은 우산을 꼭 챙겨주세요';
+    } else {
+      return '나중에 비가 올 예정이니 우산을 준비해두세요';
+    }
+  }
+
+  // 🆕 비 강도 분석
+  static RainIntensity _getRainIntensity(List<WeatherForecast> rainForecasts) {
+    // 강수량 평균 계산 (임시로 간단한 로직)
+    final hasHeavyRain = rainForecasts.any((forecast) =>
+    forecast.precipitation != '0' &&
+        forecast.precipitation.contains('mm') &&
+        double.tryParse(forecast.precipitation.replaceAll('mm', '')) != null &&
+        double.parse(forecast.precipitation.replaceAll('mm', '')) > 5.0
+    );
+
+    if (hasHeavyRain) {
+      return RainIntensity.heavy;
+    } else {
+      return RainIntensity.light;
+    }
+  }
+
   // 기준 시간 계산 (초단기실황)
   static String _getBaseTime(DateTime now) {
     final hour = now.hour;
@@ -255,6 +384,32 @@ class WeatherService {
       default: return PrecipitationType.none;
     }
   }
+}
+
+// 🆕 상세 비 예보 정보 모델
+class RainForecastInfo {
+  final bool willRain;
+  final DateTime? startTime;
+  final DateTime? endTime;
+  final String message;
+  final String advice;
+  final RainIntensity? intensity;
+
+  RainForecastInfo({
+    required this.willRain,
+    this.startTime,
+    this.endTime,
+    required this.message,
+    required this.advice,
+    this.intensity,
+  });
+}
+
+// 🆕 비 강도 enum
+enum RainIntensity {
+  light,   // 약한 비
+  moderate, // 보통 비
+  heavy,   // 강한 비
 }
 
 // 날씨 정보 모델

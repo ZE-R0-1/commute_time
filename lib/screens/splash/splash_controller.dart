@@ -25,7 +25,6 @@ class SplashController extends GetxController {
 
   Future<void> _checkAppStatus() async {
     // Mock: 앱 상태 체크
-    // - 로그인 상태 확인
     // - 온보딩 완료 여부 확인
     // - 위치 설정 완료 여부 확인
 
@@ -33,29 +32,22 @@ class SplashController extends GetxController {
 
     // 디버깅용 로그
     print('=== 스플래시 상태 체크 ===');
-    print('로그인 상태: ${_storage.read('is_logged_in') ?? false}');
     print('온보딩 완료: ${_storage.read('onboarding_completed') ?? false}');
   }
 
   void _navigateToNext() {
-    // Mock 데이터를 기반으로 네비게이션 결정
-    final bool isLoggedIn = _storage.read('is_logged_in') ?? false;
+    // 🆕 로그인 단계 제거 - 온보딩 완료 여부만 확인
     final bool isOnboardingCompleted = _storage.read('onboarding_completed') ?? false;
 
     print('=== 네비게이션 결정 ===');
-    print('로그인 상태: $isLoggedIn');
     print('온보딩 상태: $isOnboardingCompleted');
 
-    if (!isLoggedIn) {
-      // 로그인이 안 되어 있으면 로그인 화면으로
-      print('→ 로그인 화면으로 이동');
-      Get.offNamed(Routes.login);
-    } else if (!isOnboardingCompleted) {
-      // 로그인은 되어 있지만 온보딩이 안 되어 있으면 온보딩으로
+    if (!isOnboardingCompleted) {
+      // 온보딩이 완료되지 않았으면 온보딩으로
       print('→ 온보딩 화면으로 이동');
       Get.offNamed(Routes.onboarding);
     } else {
-      // 모든 설정이 완료되어 있으면 홈 화면으로
+      // 온보딩이 완료되어 있으면 홈 화면으로
       print('→ 홈 화면으로 이동');
       Get.offNamed(Routes.main);
     }

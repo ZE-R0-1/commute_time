@@ -104,18 +104,6 @@ class AnalysisController extends GetxController {
 
     _loadWeeklyPattern();
     _loadMonthlyStats();
-
-    Get.snackbar(
-      '분석 업데이트',
-      '최신 데이터로 업데이트되었습니다.',
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: Get.theme.primaryColor,
-      colorText: Colors.white,
-      margin: const EdgeInsets.all(16),
-      borderRadius: 12,
-      duration: const Duration(seconds: 2),
-      icon: const Icon(Icons.analytics, color: Colors.white),
-    );
   }
 
   // 통계 계산 메서드들

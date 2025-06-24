@@ -11,17 +11,16 @@ class HomeScreen extends GetView<HomeController> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      body: RefreshIndicator(
-        onRefresh: controller.refresh,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            children: [
-              // 커스텀 상단 영역
-              _buildHeader(),
+      body: Column(
+        children: [
+          // 🆕 고정된 상단 영역
+          _buildFixedHeader(),
 
-              // 메인 콘텐츠
-              Padding(
+          // 🆕 스크롤 가능한 콘텐츠 영역
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
@@ -48,37 +47,61 @@ class HomeScreen extends GetView<HomeController> {
                   ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  // 커스텀 헤더
-  Widget _buildHeader() {
+  // 🆕 고정된 헤더 (스크롤되지 않음)
+  Widget _buildFixedHeader() {
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Get.theme.primaryColor,
-            Get.theme.primaryColor.withValues(alpha: 0.8),
-          ],
-        ),
-      ),
+      color: Colors.grey[50], // 배경색과 동일
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // 상단 아이콘들
+              // 왼쪽 제목
+              const Text(
+                '알출퇴',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+
+              // 오른쪽 아이콘들 (새로고침 + 알림 순서)
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // 새로고침 아이콘
+                  Obx(() => IconButton(
+                    onPressed: controller.isLoading.value ||
+                        controller.isLocationLoading.value ||
+                        controller.isWeatherLoading.value
+                        ? null
+                        : controller.refresh,
+                    icon: controller.isLoading.value
+                        ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.black87,
+                      ),
+                    )
+                        : const Icon(
+                      Icons.refresh,
+                      color: Colors.black87,
+                      size: 28,
+                    ),
+                    tooltip: '새로고침',
+                  )),
+
                   // 알림 아이콘
                   IconButton(
                     onPressed: () {
@@ -86,49 +109,11 @@ class HomeScreen extends GetView<HomeController> {
                     },
                     icon: const Icon(
                       Icons.notifications_outlined,
-                      color: Colors.white,
+                      color: Colors.black87,
                       size: 28,
                     ),
                   ),
-                  // 프로필 아이콘
-                  IconButton(
-                    onPressed: () {
-                      // TODO: 프로필 화면으로 이동
-                    },
-                    icon: const CircleAvatar(
-                      radius: 16,
-                      backgroundColor: Colors.white,
-                      child: Icon(
-                        Icons.person,
-                        color: Colors.grey,
-                        size: 20,
-                      ),
-                    ),
-                  ),
                 ],
-              ),
-
-              const SizedBox(height: 20),
-
-              // 인사말 - 직접 getter 호출 (Obx 제거)
-              Text(
-                controller.greetingMessage,
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-
-              const SizedBox(height: 8),
-
-              // 서브텍스트 - 직접 getter 호출 (Obx 제거)
-              Text(
-                controller.subGreetingMessage,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.white.withValues(alpha: 0.9),
-                ),
               ),
             ],
           ),
@@ -136,7 +121,8 @@ class HomeScreen extends GetView<HomeController> {
       ),
     );
   }
-// 날씨 알림 카드 (GPS 위치 기반)
+
+  // 날씨 알림 카드 (GPS 위치 기반)
   Widget _buildWeatherCard() {
     return Obx(() => Container(
       width: double.infinity,
@@ -161,7 +147,7 @@ class HomeScreen extends GetView<HomeController> {
     ));
   }
 
-// 위치 조회 로딩 상태
+  // 위치 조회 로딩 상태
   Widget _buildLocationLoadingState() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,7 +195,7 @@ class HomeScreen extends GetView<HomeController> {
     );
   }
 
-// 날씨 로딩 상태
+  // 날씨 로딩 상태
   Widget _buildWeatherLoadingState() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -257,7 +243,7 @@ class HomeScreen extends GetView<HomeController> {
     );
   }
 
-// 날씨 정보 콘텐츠
+  // 날씨 정보 콘텐츠
   Widget _buildWeatherContent() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,36 +273,6 @@ class HomeScreen extends GetView<HomeController> {
                 ),
               ),
             ),
-            // 🆕 위치 새로고침 버튼
-            Row(
-              children: [
-                InkWell(
-                  onTap: controller.refreshWeather,
-                  borderRadius: BorderRadius.circular(6),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Icon(
-                      Icons.refresh,
-                      size: 18,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                InkWell(
-                  onTap: controller.refreshLocation,
-                  borderRadius: BorderRadius.circular(6),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Icon(
-                      Icons.location_searching,
-                      size: 18,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -329,7 +285,7 @@ class HomeScreen extends GetView<HomeController> {
           ),
         ),
 
-        // 🆕 상세 날씨 정보 (현재 날씨가 있을 때만 표시)
+        // 상세 날씨 정보 (현재 날씨가 있을 때만 표시)
         Obx(() {
           final weather = controller.currentWeather.value;
           if (weather != null) {
@@ -360,7 +316,7 @@ class HomeScreen extends GetView<HomeController> {
     );
   }
 
-// 날씨 상세 정보 위젯
+  // 날씨 상세 정보 위젯
   Widget _buildWeatherDetail(String label, String value) {
     return Column(
       children: [
@@ -384,7 +340,7 @@ class HomeScreen extends GetView<HomeController> {
     );
   }
 
-// 날씨에 따른 아이콘 선택
+  // 날씨에 따른 아이콘 선택
   IconData _getWeatherIcon() {
     final weather = controller.currentWeather.value;
     if (weather == null) return Icons.wb_cloudy;
