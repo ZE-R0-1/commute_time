@@ -128,225 +128,257 @@ class HomeScreen extends GetView<HomeController> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: controller.isLocationLoading.value || controller.isWeatherLoading.value
-            ? Colors.grey[100]
-            : Colors.yellow[100],
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: controller.isLocationLoading.value || controller.isWeatherLoading.value
-              ? Colors.grey[200]!
-              : Colors.yellow[200]!,
-          width: 1,
-        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: controller.isLocationLoading.value
-          ? _buildLocationLoadingState()
-          : controller.isWeatherLoading.value
-          ? _buildWeatherLoadingState()
-          : _buildWeatherContent(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 헤더: 제목만
+          const Text(
+            '🌤️ 오늘 날씨',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // 시간대별 날씨 (로딩 중이거나 데이터가 없으면 로딩 표시)
+          if (controller.isWeatherLoading.value || controller.isLocationLoading.value)
+            _buildWeatherLoadingList()
+          else if (controller.weatherForecast.isEmpty)
+            _buildWeatherErrorState()
+          else
+            _buildHourlyWeatherList(),
+        ],
+      ),
     ));
   }
 
-  // 위치 조회 로딩 상태
-  Widget _buildLocationLoadingState() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.blue[100],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.blue,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                '📍 현재 위치 조회 중...',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'GPS를 이용해 정확한 위치를 확인하고 있습니다',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[600],
-            height: 1.4,
-          ),
-        ),
-      ],
+// 시간대별 날씨 리스트
+  Widget _buildHourlyWeatherList() {
+    final forecasts = _getFilteredHourlyForecasts();
+
+    return SizedBox(
+      height: 80,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: forecasts.length,
+        itemBuilder: (context, index) {
+          final forecast = forecasts[index];
+          final isNow = index == 0; // 첫 번째는 현재 시간
+
+          return _buildHourlyWeatherItem(forecast, isNow);
+        },
+      ),
     );
   }
 
-  // 날씨 로딩 상태
-  Widget _buildWeatherLoadingState() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.grey,
-                ),
-              ),
+// 개별 시간대 날씨 아이템
+  Widget _buildHourlyWeatherItem(WeatherForecast forecast, bool isNow) {
+    return Container(
+      width: 60,
+      margin: const EdgeInsets.only(right: 12),
+      decoration: BoxDecoration(
+        color: isNow ? Colors.blue[50] : Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: isNow ? Border.all(color: Colors.blue[200]!) : null,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // 시간
+          Text(
+            isNow ? '지금' : _formatHour(forecast.dateTime),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isNow ? FontWeight.w600 : FontWeight.normal,
+              color: isNow ? Colors.blue[700] : Colors.grey[600],
             ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                '날씨 정보 로딩 중...',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Text(
-          '잠시만 기다려주세요',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[600],
-            height: 1.4,
           ),
-        ),
-      ],
+
+          const SizedBox(height: 4),
+
+          // 날씨 아이콘
+          Icon(
+            _getWeatherIconForForecast(forecast),
+            size: 20,
+            color: _getWeatherIconColor(forecast),
+          ),
+
+          const SizedBox(height: 4),
+
+          // 온도
+          Text(
+            '${forecast.temperature.round()}°',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: isNow ? Colors.blue[700] : Colors.black87,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  // 날씨 정보 콘텐츠
-  Widget _buildWeatherContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.yellow[200],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                _getWeatherIcon(),
-                color: Colors.orange,
-                size: 24,
-              ),
+// 로딩 상태 리스트
+  Widget _buildWeatherLoadingList() {
+    return SizedBox(
+      height: 80,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: 6, // 6개 로딩 카드
+        itemBuilder: (context, index) {
+          return Container(
+            width: 60,
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                controller.weatherInfo.value,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Text(
-          controller.weatherAdvice.value,
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[700],
-            height: 1.4,
-          ),
-        ),
-
-        // 상세 날씨 정보 (현재 날씨가 있을 때만 표시)
-        Obx(() {
-          final weather = controller.currentWeather.value;
-          if (weather != null) {
-            return Column(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  width: 24,
+                  height: 8,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.7),
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildWeatherDetail('습도', '${weather.humidity}%'),
-                      _buildWeatherDetail('풍속', '${weather.windSpeed.toStringAsFixed(1)}m/s'),
-                      _buildWeatherDetail('강수량', weather.precipitation),
-                    ],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: 20,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
               ],
-            );
-          }
-          return const SizedBox.shrink();
-        }),
-      ],
+            ),
+          );
+        },
+      ),
     );
   }
 
-  // 날씨 상세 정보 위젯
-  Widget _buildWeatherDetail(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
+// 오류 상태
+  Widget _buildWeatherErrorState() {
+    return Container(
+      height: 80,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.cloud_off,
+            color: Colors.grey[400],
+            size: 24,
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
+          const SizedBox(height: 4),
+          Text(
+            '날씨 정보를 불러올 수 없습니다',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  // 날씨에 따른 아이콘 선택
-  IconData _getWeatherIcon() {
-    final weather = controller.currentWeather.value;
-    if (weather == null) return Icons.wb_cloudy;
+// 현재 시간부터 시간대별 예보 필터링
+  List<WeatherForecast> _getFilteredHourlyForecasts() {
+    final forecasts = controller.weatherForecast;
+    if (forecasts.isEmpty) return [];
 
+    final now = DateTime.now();
+    final currentHour = DateTime(now.year, now.month, now.day, now.hour);
+
+    // 현재 시간부터 12시간 후까지 (또는 데이터가 있는 만큼)
+    List<WeatherForecast> filtered = [];
+
+    // 현재 시간 추가 (현재 날씨가 있으면 사용, 없으면 가장 가까운 예보)
+    final currentWeather = controller.currentWeather.value;
+    if (currentWeather != null) {
+      // 현재 날씨를 WeatherForecast 형태로 변환
+      final currentForecast = WeatherForecast(
+        dateTime: now,
+        temperature: currentWeather.temperature,
+        humidity: currentWeather.humidity,
+        precipitation: currentWeather.precipitation,
+        skyCondition: currentWeather.skyCondition,
+        precipitationType: currentWeather.precipitationType,
+      );
+      filtered.add(currentForecast);
+    }
+
+    // 다음 시간들 추가
+    for (int i = 1; i <= 12; i++) {
+      final targetTime = currentHour.add(Duration(hours: i));
+
+      // 해당 시간의 예보 찾기
+      final forecast = forecasts.where((f) =>
+      f.dateTime.year == targetTime.year &&
+          f.dateTime.month == targetTime.month &&
+          f.dateTime.day == targetTime.day &&
+          f.dateTime.hour == targetTime.hour
+      ).firstOrNull;
+
+      if (forecast != null) {
+        filtered.add(forecast);
+      } else if (i <= 6) {
+        // 6시간 이내는 빈 데이터라도 표시 (더미 데이터)
+        filtered.add(WeatherForecast(
+          dateTime: targetTime,
+          temperature: currentWeather?.temperature ?? 20,
+          humidity: 50,
+          precipitation: '0',
+          skyCondition: SkyCondition.clear,
+          precipitationType: PrecipitationType.none,
+        ));
+      }
+    }
+
+    return filtered.take(12).toList(); // 최대 12개 (현재 + 11시간)
+  }
+
+// 시간 포맷팅 (24시간 형식, 간단하게)
+  String _formatHour(DateTime dateTime) {
+    final hour = dateTime.hour;
+    return '${hour}시';
+  }
+
+// 예보용 날씨 아이콘
+  IconData _getWeatherIconForForecast(WeatherForecast forecast) {
     // 강수 타입 우선 확인
-    switch (weather.precipitationType) {
+    switch (forecast.precipitationType) {
       case PrecipitationType.rain:
       case PrecipitationType.rainDrop:
         return Icons.grain; // 비
@@ -361,13 +393,42 @@ class HomeScreen extends GetView<HomeController> {
     }
 
     // 하늘 상태에 따른 아이콘
-    switch (weather.skyCondition) {
+    switch (forecast.skyCondition) {
       case SkyCondition.clear:
         return Icons.wb_sunny; // 맑음
       case SkyCondition.partlyCloudy:
         return Icons.wb_cloudy; // 구름많음
       case SkyCondition.cloudy:
-        return Icons.wb_cloudy; // 흐림
+        return Icons.cloud; // 흐림
+    }
+  }
+
+// 날씨 아이콘 색상
+  Color _getWeatherIconColor(WeatherForecast forecast) {
+    // 강수가 있으면 파란색
+    if (forecast.precipitationType != PrecipitationType.none) {
+      switch (forecast.precipitationType) {
+        case PrecipitationType.rain:
+        case PrecipitationType.rainDrop:
+        case PrecipitationType.rainSnow:
+        case PrecipitationType.rainSnowDrop:
+          return Colors.blue[600]!;
+        case PrecipitationType.snow:
+        case PrecipitationType.snowDrop:
+          return Colors.lightBlue[400]!;
+        default:
+          break;
+      }
+    }
+
+    // 하늘 상태에 따른 색상
+    switch (forecast.skyCondition) {
+      case SkyCondition.clear:
+        return Colors.orange[600]!; // 맑음 - 주황
+      case SkyCondition.partlyCloudy:
+        return Colors.grey[600]!; // 구름많음 - 회색
+      case SkyCondition.cloudy:
+        return Colors.grey[700]!; // 흐림 - 진한 회색
     }
   }
 

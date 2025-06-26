@@ -235,21 +235,6 @@ class HomeController extends GetxController {
   Future<void> refreshLocation() async {
     print('=== 수동 위치 새로고침 시작 ===');
     await _initializeLocation();
-
-    final location = currentLocation.value;
-    if (location != null) {
-      Get.snackbar(
-        '위치 업데이트 완료',
-        '📍 ${location.address}\n${location.accuracyText}',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Get.theme.primaryColor,
-        colorText: Colors.white,
-        margin: const EdgeInsets.all(16),
-        borderRadius: 12,
-        duration: const Duration(seconds: 3),
-        icon: const Icon(Icons.location_on, color: Colors.white),
-      );
-    }
   }
 
   // 수동 날씨 새로고침 (새로고침 버튼 전용)

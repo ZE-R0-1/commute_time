@@ -1,10 +1,11 @@
+// lib/screens/onboarding/onboarding_controller.dart (수정된 부분만)
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 // 🆕 실제 위치 서비스 import
 import '../../app/services/location_service.dart';
+import '../../app/services/kakao_address_service.dart'; // 🆕 카카오 주소 서비스 추가
 import '../../app/routes/app_pages.dart';
 
 class OnboardingController extends GetxController {
@@ -24,6 +25,10 @@ class OnboardingController extends GetxController {
   final RxString workAddress = ''.obs;
   final Rx<TimeOfDay?> workStartTime = Rx<TimeOfDay?>(null);
   final Rx<TimeOfDay?> workEndTime = Rx<TimeOfDay?>(null);
+
+  // 🆕 주소 검색 결과 저장 (좌표 정보 포함)
+  final Rx<AddressResult?> selectedHomeAddress = Rx<AddressResult?>(null);
+  final Rx<AddressResult?> selectedWorkAddress = Rx<AddressResult?>(null);
 
   // 🆕 실제 위치 권한 및 정보
   final RxBool locationPermissionGranted = false.obs;
@@ -269,22 +274,95 @@ class OnboardingController extends GetxController {
     );
   }
 
-  // 주소 검색 (Mock - 나중에 카카오맵 API로 교체)
+  // 🆕 실제 카카오 API 주소 검색
   Future<List<String>> searchAddress(String query) async {
-    if (query.isEmpty) return [];
+    if (query.isEmpty || query.length < 2) return [];
 
-    // Mock: 주소 검색 결과
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      print('카카오 주소 검색 시작: $query');
 
-    return [
-      '서울특별시 강남구 테헤란로 123',
-      '서울특별시 강남구 테헤란로 456',
-      '서울특별시 서초구 서초대로 789',
-      '서울특별시 마포구 월드컵북로 456',
-      '서울특별시 용산구 한강대로 789',
-    ].where((address) =>
-        address.toLowerCase().contains(query.toLowerCase())
-    ).toList();
+      // 카카오 API로 주소 검색
+      final results = await KakaoAddressService.searchAddress(query);
+
+      if (results.isEmpty) {
+        print('검색 결과 없음: $query');
+        return [];
+      }
+
+      // AddressResult를 String 리스트로 변환 (기존 UI 호환성을 위해)
+      final addresses = results.map((result) => result.displayAddress).toList();
+
+      print('검색 결과: ${addresses.length}개');
+      for (int i = 0; i < addresses.length; i++) {
+        print('  ${i + 1}. ${addresses[i]}');
+      }
+
+      return addresses;
+
+    } catch (e) {
+      print('주소 검색 오류: $e');
+
+      // 오류 발생시 사용자에게 알림
+      Get.snackbar(
+        '주소 검색 오류',
+        '주소 검색 중 문제가 발생했습니다.\n잠시 후 다시 시도해주세요.',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        margin: const EdgeInsets.all(16),
+        borderRadius: 12,
+        duration: const Duration(seconds: 3),
+        icon: const Icon(Icons.error_outline, color: Colors.white),
+      );
+
+      return [];
+    }
+  }
+
+  // 🆕 실제 주소 검색 결과에서 선택 (좌표 포함)
+  Future<void> selectAddressFromSearch(String query, String selectedAddress, bool isHome) async {
+    try {
+      // 카카오 API로 다시 검색하여 정확한 결과 찾기
+      final results = await KakaoAddressService.searchAddress(query);
+
+      // 선택된 주소와 일치하는 결과 찾기
+      AddressResult? selectedResult;
+      for (final result in results) {
+        if (result.displayAddress == selectedAddress ||
+            result.fullAddress == selectedAddress) {
+          selectedResult = result;
+          break;
+        }
+      }
+
+      if (selectedResult != null) {
+        if (isHome) {
+          selectedHomeAddress.value = selectedResult;
+          setHomeAddress(selectedResult.fullAddress);
+
+          // 좌표도 저장
+          if (selectedResult.latitude != null && selectedResult.longitude != null) {
+            await _storage.write('home_latitude', selectedResult.latitude);
+            await _storage.write('home_longitude', selectedResult.longitude);
+            print('집 주소 좌표 저장: ${selectedResult.latitude}, ${selectedResult.longitude}');
+          }
+        } else {
+          selectedWorkAddress.value = selectedResult;
+          setWorkAddress(selectedResult.fullAddress);
+
+          // 좌표도 저장
+          if (selectedResult.latitude != null && selectedResult.longitude != null) {
+            await _storage.write('work_latitude', selectedResult.latitude);
+            await _storage.write('work_longitude', selectedResult.longitude);
+            print('회사 주소 좌표 저장: ${selectedResult.latitude}, ${selectedResult.longitude}');
+          }
+        }
+
+        print('${isHome ? '집' : '회사'} 주소 선택 완료: ${selectedResult.fullAddress}');
+      }
+    } catch (e) {
+      print('주소 선택 처리 오류: $e');
+    }
   }
 
   // 집 주소 설정
@@ -324,6 +402,21 @@ class OnboardingController extends GetxController {
       await _storage.write('work_end_time', _timeToString(workEndTime.value));
       await _storage.write('location_permission', locationPermissionGranted.value);
       await _storage.write('onboarding_completed_at', DateTime.now().toIso8601String());
+
+      // 🆕 선택된 주소의 상세 정보도 저장
+      final homeAddr = selectedHomeAddress.value;
+      if (homeAddr != null) {
+        await _storage.write('home_place_name', homeAddr.placeName);
+        await _storage.write('home_road_address', homeAddr.roadAddress);
+        await _storage.write('home_jibun_address', homeAddr.jibunAddress);
+      }
+
+      final workAddr = selectedWorkAddress.value;
+      if (workAddr != null) {
+        await _storage.write('work_place_name', workAddr.placeName);
+        await _storage.write('work_road_address', workAddr.roadAddress);
+        await _storage.write('work_jibun_address', workAddr.jibunAddress);
+      }
 
       // 현재 위치 정보가 있으면 저장 (이미 저장되어 있지만 확인차)
       final location = currentLocation.value;

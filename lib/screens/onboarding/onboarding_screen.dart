@@ -1,3 +1,4 @@
+// lib/screens/onboarding/onboarding_screen.dart (키보드 처리 개선)
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -15,23 +16,22 @@ class OnboardingScreen extends GetView<OnboardingController> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Get.theme.scaffoldBackgroundColor,
-      resizeToAvoidBottomInset: true, // 키보드 올라올 때 화면 조정
+      resizeToAvoidBottomInset: true, // 🆕 키보드 올라올 때 화면 조정
       body: SafeArea(
-        child: Obx(() =>
-            Column(
-              children: [
-                // 상단 진행률 표시
-                _buildProgressHeader(),
+        child: Obx(() => Column(
+          children: [
+            // 상단 진행률 표시
+            _buildProgressHeader(),
 
-                // 메인 콘텐츠 영역
-                Expanded(
-                  child: _buildStepContent(),
-                ),
+            // 🆕 메인 콘텐츠 영역 (Flexible로 변경하여 키보드 공간 확보)
+            Flexible(
+              child: _buildStepContent(),
+            ),
 
-                // 하단 네비게이션 버튼
-                _buildNavigationButtons(),
-              ],
-            )),
+            // 하단 네비게이션 버튼
+            _buildNavigationButtons(),
+          ],
+        )),
       ),
     );
   }
@@ -59,9 +59,13 @@ class OnboardingScreen extends GetView<OnboardingController> {
                 ),
               ),
               const Spacer(),
-              if (controller.currentStep.value > 0)
-                TextButton(
-                  onPressed: controller.previousStep,
+              // 항상 같은 크기의 영역을 유지하되, 첫 번째 단계에서는 투명하게
+              Opacity(
+                opacity: controller.currentStep.value > 0 ? 1.0 : 0.0,
+                child: TextButton(
+                  onPressed: controller.currentStep.value > 0
+                      ? controller.previousStep
+                      : null,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -78,6 +82,7 @@ class OnboardingScreen extends GetView<OnboardingController> {
                     ],
                   ),
                 ),
+              ),
             ],
           ),
 
@@ -154,11 +159,11 @@ class OnboardingScreen extends GetView<OnboardingController> {
                   // 마지막 단계 - 완료
                   controller.nextStep();
                 } else {
-                  // 🆕 각 단계별 특별 처리 로직 추가
+                  // 각 단계별 특별 처리 로직 추가
                   await _handleStepAction();
                 }
               } : () async {
-                // 🆕 canProceed가 false인 경우에도 위치 권한 단계에서는 권한 요청 실행
+                // canProceed가 false인 경우에도 위치 권한 단계에서는 권한 요청 실행
                 if (controller.currentStep.value == 1) {
                   await controller.requestLocationPermission();
                 }
@@ -205,7 +210,7 @@ class OnboardingScreen extends GetView<OnboardingController> {
             ),
           ),
 
-          // 🆕 수정: 건너뛰기 버튼 (위치 권한 단계이면서 권한이 허용되지 않았을 때만)
+          // 건너뛰기 버튼 (위치 권한 단계이면서 권한이 허용되지 않았을 때만)
           Obx(() {
             if (controller.currentStep.value == 1 &&
                 !controller.locationPermissionGranted.value) {
@@ -233,7 +238,7 @@ class OnboardingScreen extends GetView<OnboardingController> {
     );
   }
 
-// 🆕 각 단계별 액션 처리 메서드 추가
+  // 각 단계별 액션 처리 메서드
   Future<void> _handleStepAction() async {
     switch (controller.currentStep.value) {
       case 1: // 위치 권한 단계
@@ -253,7 +258,7 @@ class OnboardingScreen extends GetView<OnboardingController> {
     }
   }
 
-// 🆕 버튼 텍스트 결정 (실제 GPS 상태 반영)
+  // 버튼 텍스트 결정 (실제 GPS 상태 반영)
   String _getButtonText() {
     if (controller.currentStep.value == controller.totalSteps - 1) {
       return '설정 완료 🎉';
