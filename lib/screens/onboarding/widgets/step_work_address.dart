@@ -1,4 +1,4 @@
-// lib/screens/onboarding/widgets/step_work_address.dart (개선된 자동 검색)
+// lib/screens/onboarding/widgets/step_work_address.dart (미니멀 디자인)
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -14,56 +14,37 @@ class StepWorkAddress extends GetView<OnboardingController> {
 
     return SingleChildScrollView(
       controller: scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24), // 🆕 패딩 조정
       child: ConstrainedBox(
         constraints: BoxConstraints(
           minHeight: MediaQuery.of(context).size.height - 200,
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisAlignment: MainAxisAlignment.start, // 🆕 중앙 정렬
           children: [
-            // 회사 아이콘
+            const SizedBox(height: 40), // 🆕 상단 여백
+
+            // 회사 아이콘 (그대로 유지)
             _buildWorkIcon(),
 
-            // 제목과 설명
-            Column(
-              children: [
-                Text(
-                  '회사 주소 설정하기 🏢',
-                  style: Get.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    height: 1.2,
-                    fontSize: 24,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '출퇴근 시간에 맞는 최적의 경로를\n미리 확인해보세요',
-                  style: Get.textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[600],
-                    height: 1.3,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
+            const SizedBox(height: 40), // 🆕 여백 조정
+
+            // 🆕 미니멀한 제목과 설명
+            _buildMinimalTitle(),
+
+            const SizedBox(height: 32), // 🆕 여백 조정
 
             // 현재 설정된 주소 또는 입력 필드
             Obx(() => _buildAddressSection(scrollController)),
 
-            // 간단한 도움말
-            _buildHelpMessage(),
-
-            // 혜택 안내
-            _buildBenefitMessage(),
+            const SizedBox(height: 40), // 🆕 하단 여백
           ],
         ),
       ),
     );
   }
 
-  // 회사 아이콘
+  // 회사 아이콘 (그대로 유지)
   Widget _buildWorkIcon() {
     return Container(
       width: 80,
@@ -94,6 +75,33 @@ class StepWorkAddress extends GetView<OnboardingController> {
     );
   }
 
+  // 🆕 미니멀한 제목과 설명
+  Widget _buildMinimalTitle() {
+    return Column(
+      children: [
+        Text(
+          '회사 주소',
+          style: Get.textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            fontSize: 28,
+            color: Colors.grey[800],
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '출퇴근 경로 최적화를 위해 설정해주세요',
+          style: Get.textTheme.bodyMedium?.copyWith(
+            color: Colors.grey[500],
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
   // 주소 섹션
   Widget _buildAddressSection(ScrollController scrollController) {
     if (controller.workAddress.value.isNotEmpty) {
@@ -103,61 +111,50 @@ class StepWorkAddress extends GetView<OnboardingController> {
     }
   }
 
-  // 설정된 주소 표시
+  // 🆕 미니멀한 설정된 주소 표시
   Widget _buildSetAddress() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.orange[50],
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.orange[200]!,
+          color: Colors.orange[100]!,
           width: 1,
         ),
       ),
       child: Column(
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.check_circle,
-                color: Colors.orange[600],
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '회사 주소 설정 완료',
-                style: Get.textTheme.bodySmall?.copyWith(
-                  color: Colors.orange[700],
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+          Icon(
+            Icons.check_circle_rounded,
+            color: Colors.orange[600],
+            size: 24,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             controller.workAddress.value,
-            style: Get.textTheme.bodyMedium?.copyWith(
+            style: Get.textTheme.bodyLarge?.copyWith(
               color: Colors.orange[800],
               fontWeight: FontWeight.w500,
+              height: 1.4,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           TextButton(
             onPressed: () {
               controller.setWorkAddress('');
             },
             style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              minimumSize: Size.zero,
+              foregroundColor: Colors.orange[600],
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
-            child: Text(
-              '주소 변경',
+            child: const Text(
+              '변경하기',
               style: TextStyle(
-                color: Colors.orange[600],
-                fontSize: 12,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -166,22 +163,20 @@ class StepWorkAddress extends GetView<OnboardingController> {
     );
   }
 
-  // 🆕 개선된 실시간 검색 주소 입력 필드
+  // 🆕 미니멀한 주소 입력 필드
   Widget _buildAddressInput(ScrollController scrollController) {
     final TextEditingController searchController = TextEditingController();
     final RxList<String> searchResults = <String>[].obs;
     final RxBool isSearching = false.obs;
     final FocusNode focusNode = FocusNode();
 
-    // 🆕 디바운싱을 위한 타이머
     Timer? debounceTimer;
 
-    // 🆕 포커스 처리
     focusNode.addListener(() {
       if (focusNode.hasFocus) {
-        Future.delayed(const Duration(milliseconds: 300), () {
+        Future.delayed(const Duration(milliseconds: 350), () {
           scrollController.animateTo(
-            scrollController.position.maxScrollExtent * 0.4,
+            scrollController.position.maxScrollExtent,
             duration: const Duration(milliseconds: 500),
             curve: Curves.easeInOut,
           );
@@ -189,19 +184,15 @@ class StepWorkAddress extends GetView<OnboardingController> {
       }
     });
 
-    // 🆕 개선된 검색 함수 (디바운싱 적용)
     void performSearch(String query) {
-      // 이전 타이머 취소
       debounceTimer?.cancel();
 
-      // 1글자 이하면 결과만 지우고 검색 안함
       if (query.length <= 1) {
         searchResults.clear();
         isSearching.value = false;
         return;
       }
 
-      // 🆕 500ms 후에 검색 실행 (디바운싱)
       debounceTimer = Timer(const Duration(milliseconds: 500), () async {
         if (query.length > 1) {
           isSearching.value = true;
@@ -209,13 +200,11 @@ class StepWorkAddress extends GetView<OnboardingController> {
           try {
             final results = await controller.searchAddress(query);
 
-            // 🆕 검색어가 여전히 같을 때만 결과 업데이트
             if (searchController.text.trim() == query) {
-              searchResults.value = results.take(8).toList(); // 최대 8개로 증가
+              searchResults.value = results.take(6).toList(); // 🆕 6개로 조정
             }
           } catch (e) {
             print('회사 주소 검색 오류: $e');
-            // 🆕 에러가 나도 기존 결과는 유지
           } finally {
             isSearching.value = false;
           }
@@ -225,39 +214,88 @@ class StepWorkAddress extends GetView<OnboardingController> {
 
     return Column(
       children: [
-        // 검색 입력 필드
-        TextFormField(
-          controller: searchController,
-          focusNode: focusNode,
-          decoration: InputDecoration(
-            labelText: '회사 주소를 입력하세요',
-            hintText: '예: 마포구 월드컵북로 또는 회사명',
-            prefixIcon: Icon(
-              Icons.search,
-              color: Colors.orange[600],
-            ),
-            // 🆕 검색 중일 때만 로딩 표시 (작게)
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.orange[600]!),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
+        // 🆕 미니멀한 검색 입력 필드
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          // 🆕 디바운싱 적용된 검색
-          onChanged: (value) {
-            performSearch(value.trim());
-          },
+          child: TextFormField(
+            controller: searchController,
+            focusNode: focusNode,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+            decoration: InputDecoration(
+              hintText: '회사명 또는 건물명 입력',
+              hintStyle: TextStyle(
+                color: Colors.grey[400],
+                fontWeight: FontWeight.w400,
+              ),
+              prefixIcon: Icon(
+                Icons.search_rounded,
+                color: Colors.grey[400],
+                size: 22,
+              ),
+              suffixIcon: Obx(() => isSearching.value
+                  ? Padding(
+                padding: const EdgeInsets.all(14),
+                child: SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.orange[600],
+                  ),
+                ),
+              )
+                  : searchController.text.isNotEmpty
+                  ? IconButton(
+                onPressed: () {
+                  searchController.clear();
+                  searchResults.clear();
+                  debounceTimer?.cancel();
+                },
+                icon: Icon(
+                  Icons.close_rounded,
+                  color: Colors.grey[400],
+                  size: 20,
+                ),
+              )
+                  : const SizedBox.shrink()),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(
+                  color: Colors.orange[300]!,
+                  width: 2,
+                ),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 16,
+              ),
+            ),
+            onChanged: (value) {
+              performSearch(value.trim());
+            },
+          ),
         ),
 
-        // 🆕 개선된 검색 결과 표시
-        Obx(() => _buildSmoothSearchResults(
+        // 🆕 미니멀한 검색 결과 표시
+        Obx(() => _buildMinimalSearchResults(
           searchResults,
           isSearching,
           searchController,
@@ -267,210 +305,85 @@ class StepWorkAddress extends GetView<OnboardingController> {
     );
   }
 
-  // 🆕 부드러운 검색 결과 위젯
-  Widget _buildSmoothSearchResults(
+  // 🆕 미니멀한 검색 결과 위젯
+  Widget _buildMinimalSearchResults(
       RxList<String> searchResults,
       RxBool isSearching,
       TextEditingController searchController,
       Timer? debounceTimer,
       ) {
-    // 검색 결과가 없으면 표시 안함
     if (searchResults.isEmpty) {
       return const SizedBox.shrink();
     }
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300), // 🆕 부드러운 애니메이션
+      duration: const Duration(milliseconds: 300),
       margin: const EdgeInsets.only(top: 12),
-      constraints: const BoxConstraints(maxHeight: 200), // 높이 약간 증가
+      constraints: const BoxConstraints(maxHeight: 180),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.orange[200]!),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         color: Colors.white,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Column(
-        children: [
-          // 🆕 검색 결과 헤더 (개선)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.orange[50],
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.location_on,
-                  color: Colors.orange[600],
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '검색 결과 ${searchResults.length}개',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.orange[700],
-                  ),
-                ),
-                const Spacer(),
-                // 🆕 검색 중일 때 작은 로딩 표시
-                if (isSearching.value) ...[
-                  SizedBox(
-                    width: 12,
-                    height: 12,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.orange[600],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                InkWell(
-                  onTap: () {
-                    searchResults.clear();
-                    debounceTimer?.cancel();
-                  },
-                  child: Icon(
-                    Icons.close,
-                    color: Colors.orange[600],
-                    size: 16,
-                  ),
-                ),
-              ],
-            ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: searchResults.length,
+          separatorBuilder: (context, index) => Divider(
+            height: 1,
+            color: Colors.grey[100],
+            indent: 16,
+            endIndent: 16,
           ),
-
-          // 검색 결과 리스트
-          Expanded(
-            child: ListView.builder(
-              padding: EdgeInsets.zero,
-              itemCount: searchResults.length,
-              itemBuilder: (context, index) {
-                final address = searchResults[index];
-                return InkWell(
-                  onTap: () async {
-                    // 상세 주소 정보와 함께 저장 (회사 주소)
-                    await controller.selectAddressFromSearch(
-                      searchController.text.trim(),
-                      address,
-                      false, // isHome = false (회사 주소)
-                    );
-                    searchResults.clear();
-                    searchController.clear();
-                    debounceTimer?.cancel();
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      border: index < searchResults.length - 1
-                          ? Border(bottom: BorderSide(color: Colors.grey[200]!))
-                          : null,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.location_on,
-                          color: Colors.orange[600],
-                          size: 16,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            address,
-                            style: Get.textTheme.bodyMedium?.copyWith(
-                              fontSize: 13,
-                              height: 1.4,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Icon(
-                          Icons.arrow_forward_ios,
-                          color: Colors.grey[400],
-                          size: 12,
-                        ),
-                      ],
-                    ),
-                  ),
+          itemBuilder: (context, index) {
+            final address = searchResults[index];
+            return InkWell(
+              onTap: () async {
+                await controller.selectAddressFromSearch(
+                  searchController.text.trim(),
+                  address,
+                  false, // isHome = false (회사 주소)
                 );
+                searchResults.clear();
+                searchController.clear();
+                debounceTimer?.cancel();
               },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 간단한 도움말
-  Widget _buildHelpMessage() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.blue[50],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.lightbulb_outline,
-            size: 16,
-            color: Colors.blue[600],
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              '💡 2글자 이상 입력하면 자동으로 주소를 검색해요',
-              style: Get.textTheme.bodySmall?.copyWith(
-                color: Colors.blue[700],
-                fontSize: 11,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.location_on_rounded,
+                      color: Colors.grey[400],
+                      size: 18,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        address,
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.4,
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w400,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 혜택 안내 메시지
-  Widget _buildBenefitMessage() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.orange[50],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.schedule,
-            size: 16,
-            color: Colors.orange[600],
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              '⏰ 출근 시간에 맞춰 언제 출발해야 하는지 알려드려요',
-              style: Get.textTheme.bodySmall?.copyWith(
-                color: Colors.orange[700],
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
   }

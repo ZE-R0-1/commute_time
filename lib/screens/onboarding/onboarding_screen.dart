@@ -1,4 +1,4 @@
-// lib/screens/onboarding/onboarding_screen.dart (키보드 처리 개선)
+// lib/screens/onboarding/onboarding_screen.dart (AnimatedSwitcher 제거)
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -16,7 +16,7 @@ class OnboardingScreen extends GetView<OnboardingController> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Get.theme.scaffoldBackgroundColor,
-      resizeToAvoidBottomInset: true, // 🆕 키보드 올라올 때 화면 조정
+      resizeToAvoidBottomInset: true, // 🆕 키보드 처리 개선
       body: SafeArea(
         child: Obx(() => Column(
           children: [
@@ -28,7 +28,7 @@ class OnboardingScreen extends GetView<OnboardingController> {
               child: _buildStepContent(),
             ),
 
-            // 하단 네비게이션 버튼
+            // 하단 네비게이션 버튼 (키보드와 상관없이 하단 고정)
             _buildNavigationButtons(),
           ],
         )),
@@ -105,24 +105,10 @@ class OnboardingScreen extends GetView<OnboardingController> {
     );
   }
 
-  // 단계별 콘텐츠
+  // 🆕 단계별 콘텐츠 (AnimatedSwitcher 제거)
   Widget _buildStepContent() {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      transitionBuilder: (child, animation) {
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(1.0, 0.0),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeInOut,
-          )),
-          child: child,
-        );
-      },
-      child: _getCurrentStepWidget(),
-    );
+    // 애니메이션 없이 바로 위젯 반환
+    return _getCurrentStepWidget();
   }
 
   // 현재 단계의 위젯 반환
