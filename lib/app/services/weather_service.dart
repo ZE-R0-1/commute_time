@@ -302,10 +302,8 @@ class WeatherService {
         temperature: double.tryParse(weatherData['T1H'] ?? '0') ?? 0,
         humidity: int.tryParse(weatherData['REH'] ?? '0') ?? 0,
         precipitation: weatherData['RN1'] ?? '0',
-        windSpeed: double.tryParse(weatherData['WSD'] ?? '0') ?? 0,
         skyCondition: _getSkyCondition(weatherData['SKY'] ?? '1'),
         precipitationType: _getPrecipitationType(weatherData['PTY'] ?? '0'),
-        updateTime: DateTime.now(),
       );
     } catch (e) {
       print('날씨 데이터 파싱 오류: $e');
@@ -342,8 +340,6 @@ class WeatherService {
         forecasts.add(WeatherForecast(
           dateTime: forecastDateTime,
           temperature: double.tryParse(data['TMP'] ?? '0') ?? 0,
-          maxTemperature: double.tryParse(data['TMX'] ?? '0'),
-          minTemperature: double.tryParse(data['TMN'] ?? '0'),
           humidity: int.tryParse(data['REH'] ?? '0') ?? 0,
           precipitation: data['PCP'] ?? '0',
           skyCondition: _getSkyCondition(data['SKY'] ?? '1'),
@@ -408,7 +404,6 @@ class RainForecastInfo {
 // 🆕 비 강도 enum
 enum RainIntensity {
   light,   // 약한 비
-  moderate, // 보통 비
   heavy,   // 강한 비
 }
 
@@ -417,19 +412,15 @@ class WeatherInfo {
   final double temperature; // 기온
   final int humidity; // 습도
   final String precipitation; // 강수량
-  final double windSpeed; // 풍속
   final SkyCondition skyCondition; // 하늘 상태
   final PrecipitationType precipitationType; // 강수 형태
-  final DateTime updateTime;
 
   WeatherInfo({
     required this.temperature,
     required this.humidity,
     required this.precipitation,
-    required this.windSpeed,
     required this.skyCondition,
     required this.precipitationType,
-    required this.updateTime,
   });
 
   String get weatherDescription {
@@ -443,58 +434,12 @@ class WeatherInfo {
     }
   }
 
-  String get weatherEmoji {
-    if (precipitationType != PrecipitationType.none) {
-      switch (precipitationType) {
-        case PrecipitationType.rain:
-        case PrecipitationType.rainDrop:
-          return '🌧️';
-        case PrecipitationType.snow:
-        case PrecipitationType.snowDrop:
-          return '❄️';
-        case PrecipitationType.rainSnow:
-        case PrecipitationType.rainSnowDrop:
-          return '🌨️';
-        default:
-          break;
-      }
-    }
-
-    switch (skyCondition) {
-      case SkyCondition.clear:
-        return '☀️';
-      case SkyCondition.partlyCloudy:
-        return '⛅';
-      case SkyCondition.cloudy:
-        return '☁️';
-    }
-  }
-
-  String get advice {
-    if (precipitationType == PrecipitationType.rain ||
-        precipitationType == PrecipitationType.rainDrop) {
-      return '우산을 챙기시고 조기 출발을 권장드려요';
-    } else if (precipitationType == PrecipitationType.snow ||
-        precipitationType == PrecipitationType.snowDrop) {
-      return '눈길 주의! 대중교통 이용을 권장드려요';
-    } else if (temperature < 0) {
-      return '한파 주의! 따뜻하게 입고 나가세요';
-    } else if (temperature > 30) {
-      return '더위 주의! 충분한 수분 섭취하세요';
-    } else if (skyCondition == SkyCondition.cloudy) {
-      return '흐린 날씨네요. 쾌적한 하루 되세요';
-    } else {
-      return '좋은 날씨네요! 즐거운 하루 되세요';
-    }
-  }
 }
 
 // 날씨 예보 모델
 class WeatherForecast {
   final DateTime dateTime;
   final double temperature;
-  final double? maxTemperature;
-  final double? minTemperature;
   final int humidity;
   final String precipitation;
   final SkyCondition skyCondition;
@@ -503,8 +448,6 @@ class WeatherForecast {
   WeatherForecast({
     required this.dateTime,
     required this.temperature,
-    this.maxTemperature,
-    this.minTemperature,
     required this.humidity,
     required this.precipitation,
     required this.skyCondition,

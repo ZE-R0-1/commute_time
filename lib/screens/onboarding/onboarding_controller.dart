@@ -133,34 +133,13 @@ class OnboardingController extends GetxController {
         print('- 좌표: ${location.latitude}, ${location.longitude}');
         print('- 정확도: ${location.accuracyText}');
 
-        // 성공 메시지
-        Get.snackbar(
-          '위치 확인 완료! 📍',
-          '${location.address}\n${location.accuracyText}',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          margin: const EdgeInsets.all(16),
-          borderRadius: 12,
-          duration: const Duration(seconds: 3),
-          icon: const Icon(Icons.location_on, color: Colors.white),
-        );
+        print('위치 확인 완료: ${location.address}');
 
       } else {
         // 위치 조회 실패시에도 권한은 허용된 상태
         print('위치 조회 실패 - 기본 설정으로 진행');
 
-        Get.snackbar(
-          '위치 권한 허용됨',
-          '현재 위치 조회에 실패했지만\n나중에 다시 시도할 수 있습니다.',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
-          margin: const EdgeInsets.all(16),
-          borderRadius: 12,
-          duration: const Duration(seconds: 2),
-          icon: const Icon(Icons.info_outline, color: Colors.white),
-        );
+        print('위치 권한 허용됨 - 현재 위치 조회 실패');
       }
 
     } catch (e) {
@@ -168,18 +147,7 @@ class OnboardingController extends GetxController {
 
       // 오류 발생해도 진행은 가능하게
       locationPermissionGranted.value = true;
-
-      Get.snackbar(
-        '위치 설정',
-        '위치 권한은 나중에 설정할 수 있습니다.',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-        margin: const EdgeInsets.all(16),
-        borderRadius: 12,
-        duration: const Duration(seconds: 2),
-        icon: const Icon(Icons.info_outline, color: Colors.white),
-      );
+      print('위치 권한 오류 발생 - 나중에 설정 가능');
     } finally {
       isLocationLoading.value = false;
     }
@@ -238,16 +206,7 @@ class OnboardingController extends GetxController {
               // 권한 없이도 진행 가능
               locationPermissionGranted.value = true;
 
-              Get.snackbar(
-                '위치 권한 건너뛰기',
-                '나중에 설정에서 권한을 허용할 수 있습니다.',
-                snackPosition: SnackPosition.TOP,
-                backgroundColor: Colors.grey[600],
-                colorText: Colors.white,
-                margin: const EdgeInsets.all(16),
-                borderRadius: 12,
-                duration: const Duration(seconds: 2),
-              );
+              print('위치 권한 건너뛰기 - 나중에 설정 가능');
             },
             child: const Text('나중에'),
           ),
@@ -302,18 +261,7 @@ class OnboardingController extends GetxController {
     } catch (e) {
       print('주소 검색 오류: $e');
 
-      // 오류 발생시 사용자에게 알림
-      Get.snackbar(
-        '주소 검색 오류',
-        '주소 검색 중 문제가 발생했습니다.\n잠시 후 다시 시도해주세요.',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        margin: const EdgeInsets.all(16),
-        borderRadius: 12,
-        duration: const Duration(seconds: 3),
-        icon: const Icon(Icons.error_outline, color: Colors.white),
-      );
+      print('주소 검색 오류 발생 - 잠시 후 다시 시도');
 
       return [];
     }
@@ -437,18 +385,7 @@ class OnboardingController extends GetxController {
         print('현재 위치: ${location.address}');
       }
 
-      // 완료 메시지
-      Get.snackbar(
-        '설정 완료! 🎉',
-        '출퇴근 알리미 서비스를 시작합니다.',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Get.theme.primaryColor,
-        colorText: Colors.white,
-        margin: const EdgeInsets.all(16),
-        borderRadius: 12,
-        duration: const Duration(seconds: 2),
-        icon: const Icon(Icons.celebration, color: Colors.white),
-      );
+      print('설정 완료! 출퇴근 알리미 서비스를 시작합니다.');
 
       // 2초 후 메인 화면(탭바 포함)으로 이동
       await Future.delayed(const Duration(seconds: 2));
@@ -456,17 +393,7 @@ class OnboardingController extends GetxController {
 
     } catch (e) {
       print('온보딩 완료 오류: $e');
-      Get.snackbar(
-        '오류 발생',
-        '설정 저장 중 문제가 발생했습니다.',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        margin: const EdgeInsets.all(16),
-        borderRadius: 12,
-        duration: const Duration(seconds: 3),
-        icon: const Icon(Icons.error_outline, color: Colors.white),
-      );
+      print('설정 저장 중 문제가 발생했습니다.');
     } finally {
       isLoading.value = false;
     }

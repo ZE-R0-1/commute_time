@@ -10,7 +10,6 @@ class HomeController extends GetxController {
   final GetStorage _storage = GetStorage();
 
   // 사용자 정보
-  final RxString userName = ''.obs;
   final RxString homeAddress = ''.obs;
   final RxString workAddress = ''.obs;
   final RxString workStartTime = '09:00'.obs;
@@ -27,9 +26,6 @@ class HomeController extends GetxController {
   // 🆕 상세 비 예보 정보
   final Rx<RainForecastInfo?> rainForecast = Rx<RainForecastInfo?>(null);
 
-  // UI 표시용 날씨 정보 (기존 코드와 호환성 유지)
-  final RxString weatherInfo = '위치 확인 중...'.obs;
-  final RxString weatherAdvice = '현재 위치를 조회하고 있습니다'.obs;
 
   // 출근 정보
   final RxString recommendedDepartureTime = '8:15 출발 권장'.obs;
@@ -66,8 +62,6 @@ class HomeController extends GetxController {
     workStartTime.value = _storage.read('work_start_time') ?? '09:00';
     workEndTime.value = _storage.read('work_end_time') ?? '18:00';
 
-    // Mock 사용자 이름
-    userName.value = '김출근';
 
     print('사용자 데이터 로드 완료');
     print('집: ${homeAddress.value}');
@@ -87,7 +81,6 @@ class HomeController extends GetxController {
       final lastLocation = await LocationService.getLastKnownLocation();
       if (lastLocation != null) {
         currentLocation.value = lastLocation;
-        weatherInfo.value = '${lastLocation.address} 기준 날씨 조회 중...';
 
         // 마지막 위치로 먼저 날씨 조회
         _loadWeatherForLocation(lastLocation);
@@ -99,12 +92,6 @@ class HomeController extends GetxController {
       if (location != null) {
         currentLocation.value = location;
 
-        // GPS 정확도에 따른 메시지
-        final accuracyMsg = location.accuracyStatus == LocationAccuracyStatus.excellent
-            ? '정확한 위치'
-            : location.accuracyText;
-
-        weatherInfo.value = '📍 ${location.address} ($accuracyMsg)';
 
         print('GPS 위치 확인: ${location.address}');
         print('좌표: ${location.latitude}, ${location.longitude}');
@@ -143,8 +130,6 @@ class HomeController extends GetxController {
     );
 
     currentLocation.value = defaultLocation;
-    weatherInfo.value = '📍 ${defaultLocation.address}';
-    weatherAdvice.value = 'GPS 권한을 허용하면 현재 위치 날씨를 확인할 수 있어요';
 
     await _loadWeatherForLocation(defaultLocation);
   }
@@ -164,16 +149,8 @@ class HomeController extends GetxController {
 
       if (weatherData != null) {
         currentWeather.value = weatherData;
-
-        // UI 표시용 텍스트 업데이트
-        weatherInfo.value = '${weatherData.weatherEmoji} ${weatherData.weatherDescription} ${weatherData.temperature.round()}°C';
-        weatherAdvice.value = weatherData.advice;
-
         print('날씨 조회 성공: ${weatherData.weatherDescription} ${weatherData.temperature}°C');
       } else {
-        // API 오류시
-        weatherInfo.value = '🌤️ 날씨 정보를 불러올 수 없습니다';
-        weatherAdvice.value = '잠시 후 다시 시도해주세요';
         print('날씨 조회 실패');
       }
 
@@ -193,8 +170,6 @@ class HomeController extends GetxController {
 
     } catch (e) {
       print('날씨 조회 오류: $e');
-      weatherInfo.value = '🌤️ 날씨 정보 오류';
-      weatherAdvice.value = '잠시 후 다시 시도해주세요';
     } finally {
       isWeatherLoading.value = false;
     }
@@ -207,10 +182,6 @@ class HomeController extends GetxController {
       rainForecast.value = rainInfo;
 
       if (rainInfo != null && rainInfo.willRain) {
-        // 비 예보가 있으면 날씨 정보 업데이트
-        weatherInfo.value = rainInfo.message;
-        weatherAdvice.value = rainInfo.advice;
-
         print('=== 상세 비 예보 ===');
         print('메시지: ${rainInfo.message}');
         print('조언: ${rainInfo.advice}');
@@ -222,7 +193,6 @@ class HomeController extends GetxController {
         }
         print('강도: ${rainInfo.intensity}');
       } else if (rainInfo != null && !rainInfo.willRain) {
-        // 비 예보가 없으면 기본 날씨 조언 유지
         print('=== 비 예보 없음 ===');
         print('메시지: ${rainInfo.message}');
       }
@@ -231,34 +201,18 @@ class HomeController extends GetxController {
     }
   }
 
-  // 수동 위치 새로고침 (새로고침 버튼 전용)
-  Future<void> refreshLocation() async {
-    print('=== 수동 위치 새로고침 시작 ===');
-    await _initializeLocation();
-  }
-
-  // 수동 날씨 새로고침 (새로고침 버튼 전용)
-  Future<void> refreshWeather() async {
-    print('=== 수동 날씨 새로고침 시작 ===');
-    final location = currentLocation.value;
-    if (location != null) {
-      await _loadWeatherForLocation(location);
-    } else {
-      await _initializeLocation();
-    }
-  }
 
   // 🔥 수동 전체 새로고침 (새로고침 버튼 전용)
+  @override
   Future<void> refresh() async {
     print('=== 수동 전체 새로고침 시작 ===');
 
     await Future.wait([
-      _loadTodayData(),     // 교통 정보 새로고침
-      refreshLocation(),    // 위치 + 날씨 + 비 예보 새로고침
+      _loadTodayData(),       // 교통 정보 새로고침
+      _initializeLocation(),  // 위치 + 날씨 + 비 예보 새로고침
     ]);
 
-    // 🆕 비 예보 정보 포함한 완료 메시지
-    String message = '최신 위치, 날씨, 교통 정보를 불러왔습니다.';
+    print('최신 위치, 날씨, 교통 정보를 불러왔습니다.');
 
     final rain = rainForecast.value;
     if (rain != null && rain.willRain && rain.startTime != null) {
@@ -266,7 +220,7 @@ class HomeController extends GetxController {
       final timeStr = hour < 12 ? '오전 ${hour}시' :
       hour == 12 ? '정오' :
       hour < 18 ? '오후 ${hour - 12}시' : '저녁 ${hour - 12}시';
-      message += '\n☔ $timeStr부터 비 예보';
+      print('☔ $timeStr부터 비 예보');
     }
   }
 
