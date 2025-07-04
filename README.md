@@ -1,16 +1,229 @@
-# commute_time
+# 🚇 출퇴근타임 (Commute Time) 
 
-스마트한 출퇴근 시간 관리 앱
+> **🚧 개발 중인 프로젝트 🚧**  
+> 스마트한 출퇴근 시간 관리를 위한 Flutter 앱 프로젝트
 
-## Getting Started
+[![Flutter](https://img.shields.io/badge/Flutter-3.0+-02569B?style=flat&logo=flutter&logoColor=white)](https://flutter.dev)
+[![Dart](https://img.shields.io/badge/Dart-3.0+-0175C2?style=flat&logo=dart&logoColor=white)](https://dart.dev)
+[![GetX](https://img.shields.io/badge/GetX-4.6+-9C27B0?style=flat&logo=flutter&logoColor=white)](https://pub.dev/packages/get)
+[![Development Status](https://img.shields.io/badge/Status-In%20Development-orange?style=flat)](.)
 
-This project is a starting point for a Flutter application.
+---
+<img src="https://github.com/user-attachments/assets/fa8c9e9b-c245-45a8-a8f2-1c6e5b1fffa8" width="30%"> <img src="https://github.com/user-attachments/assets/3ea967e1-8af6-42ce-964e-4cd2e64a2e3e" width="30%"> <img src="https://github.com/user-attachments/assets/4cd985d9-b69f-4f3c-98d9-e0bfd90c9f5f" width="30%">
 
-A few resources to get you started if this is your first Flutter project:
+## 📱 프로젝트 소개
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+**출퇴근타임**은 직장인들의 스마트한 출퇴근을 돕는 모바일 앱을 개발하는 **Flutter 프로젝트**입니다. 
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+현재 기본적인 UI/UX와 핵심 기능들이 구현되어 있으며, 실제 API 연동 및 고도화 작업을 진행 중입니다.
+
+### 🎯 프로젝트 목표
+- 출퇴근 시간 최적화를 통한 삶의 질 향상
+- 실시간 교통정보 기반 스마트 경로 안내
+- 개인화된 출퇴근 패턴 분석 및 인사이트 제공
+
+---
+
+## 🚀 현재 구현 상태
+
+### ✅ **완료된 기능**
+
+#### 📱 **기본 앱 구조**
+- **온보딩 플로우** - 위치 권한, 집/회사 주소 설정, 근무시간 설정
+- **탭 기반 네비게이션** - 홈, 지도, 분석, 설정 화면
+- **상태 관리** - GetX 기반 반응형 상태 관리
+- **로컬 저장소** - 사용자 설정 및 데이터 저장
+
+#### 🏠 **홈 화면**
+- **날씨 정보 표시** - 현재 날씨 및 시간별 예보 (기상청 API 연동)
+- **출퇴근 정보 카드** - 권장 출발시간, 예상 소요시간, 교통비
+- **교통 상황 그리드** - 지하철, 버스, 도로, 따릉이 상태 (Mock 데이터)
+
+#### 🗺️ **지도 화면**  
+- **주소 관리** - 집/회사 주소 설정 및 수정
+- **카카오 주소 검색** - 실시간 주소 검색 및 좌표 변환
+- **경로 검색** - 기본 경로 검색 기능 (UI 구현)
+
+#### 📊 **분석 화면**
+- **통계 대시보드** - 절약 시간, 평균 소요시간, 교통비 분석
+- **요일별 패턴** - 차트 형태의 시각적 데이터 표시
+- **월별 통계** - 기간별 출퇴근 데이터 분석
+
+#### ⚙️ **설정 화면**
+- **알림 설정** - 출발시간, 날씨, 교통장애 알림 토글
+- **개인화 설정** - 근무시간, 선호 교통수단, 준비시간
+- **앱 설정** - 다크모드, 프리미엄 업그레이드 (UI)
+
+### 🔧 **부분 구현**
+
+#### 🌤️ **날씨 서비스**
+- ✅ 기상청 API 연동 완료
+- ✅ 현재 날씨 및 예보 조회
+- ✅ 비 예보 상세 분석
+- 🔄 위치 기반 자동 갱신 (GPS 연동 중)
+
+#### 📍 **위치 서비스**
+- ✅ GPS 권한 관리
+- ✅ 현재 위치 조회
+- ✅ 카카오 주소 검색 API 연동
+- 🔄 위치 기반 서비스 고도화
+
+### ⏳ **개발 예정**
+
+#### 🚇 **실시간 교통 정보**
+- 지하철 실시간 운행 정보 API 연동
+- 버스 도착 정보 API 연동  
+- 도로 교통 상황 API 연동
+
+#### 🧠 **스마트 알고리즘**
+- AI 기반 최적 경로 추천
+- 개인 패턴 학습 및 예측
+- 동적 출발시간 계산
+
+#### 📱 **고급 기능**
+- Push 알림 시스템
+- 위젯 지원
+- 오프라인 모드
+
+---
+
+## 🛠️ 기술 스택
+
+### **Frontend**
+- **Flutter 3.0+** - 크로스플랫폼 모바일 앱 개발
+- **Dart 3.0+** - 프로그래밍 언어
+- **GetX 4.6+** - 상태관리, 라우팅, 의존성 주입
+
+### **UI/UX**
+- **Flutter ScreenUtil** - 반응형 UI 디자인
+- **Material Design 3** - 구글 디자인 시스템
+- **Custom Animations** - 부드러운 사용자 경험
+
+### **API & 서비스** (연동 완료/진행중)
+- ✅ **카카오 주소 검색 API** - 주소 검색 및 좌표 변환
+- ✅ **기상청 날씨 API** - 실시간 날씨 및 예보
+- 🔄 **교통 관련 API** - 지하철, 버스 등 (연동 예정)
+
+### **데이터 관리**
+- **Get Storage** - 로컬 데이터 저장
+- **Geolocator** - GPS 위치 서비스
+- **HTTP/Dio** - RESTful API 통신
+
+---
+
+## 📁 프로젝트 구조
+
+```
+lib/
+├── app/
+│   ├── routes/          # 앱 라우팅 (GetX Router)
+│   ├── services/        # API 서비스들
+│   │   ├── kakao_address_service.dart    # 카카오 주소 API
+│   │   ├── weather_service.dart          # 기상청 날씨 API  
+│   │   └── location_service.dart         # GPS 위치 서비스
+│   └── theme/           # 앱 테마 및 스타일
+├── screens/            # 화면별 폴더 구조
+│   ├── splash/         # 스플래시 (로딩)
+│   ├── onboarding/     # 온보딩 (5단계)
+│   │   └── widgets/    # 단계별 위젯들
+│   ├── main/           # 메인 탭 컨테이너
+│   ├── home/           # 홈 대시보드  
+│   ├── map/            # 지도 및 경로
+│   ├── analysis/       # 출퇴근 분석
+│   ├── settings/       # 설정 화면
+│   └── route_detail/   # 경로 상세보기
+└── main.dart          # 앱 진입점
+```
+
+---
+
+## 📱 주요 화면 미리보기
+
+### 🏠 **홈 화면**
+- 실시간 날씨 정보 (12시간 시간별 예보)
+- 출퇴근 권장 시간 및 경로 정보
+- 교통수단별 상황 (지하철/버스/도로/따릉이)
+
+### 🗺️ **지도 화면**  
+- 집/회사 주소 설정 및 관리
+- 카카오 API 기반 주소 검색
+- 경로 검색 및 즐겨찾기 (UI 구현)
+
+### 📊 **분석 화면**
+- 이번 달 절약 시간 및 비용
+- 요일별 출퇴근 패턴 차트
+- 월별 통계 및 트렌드
+
+### ⚙️ **설정 화면**
+- 알림 설정 (iOS 스타일 토글)
+- 개인화 설정 (근무시간, 교통수단 등)
+- 프리미엄 기능 (UI 구현)
+
+---
+
+## 🧪 현재 테스트 상태
+
+### ✅ **동작하는 기능**
+- 온보딩 플로우 (주소 설정, 근무시간 설정)
+- 카카오 주소 검색 (실제 API 연동)
+- 기상청 날씨 조회 (실제 API 연동)
+- GPS 위치 권한 및 현재 위치 조회
+- 모든 화면 네비게이션 및 UI
+
+### 🔄 **Mock 데이터 사용 중**
+- 교통 상황 정보 (지하철, 버스, 도로)
+- 출퇴근 소요시간 및 비용 계산
+- 분석 화면의 통계 데이터
+- 경로 검색 결과
+
+---
+
+## 🛣️ 개발 로드맵
+
+### 📅 **Phase 1: 현재 (v0.1.0)**
+- [x] 기본 UI/UX 구현
+- [x] 온보딩 플로우
+- [x] 카카오 주소 API 연동
+- [x] 기상청 날씨 API 연동
+- [x] GPS 위치 서비스
+
+### 📅 **Phase 2: 다음 단계 (v0.2.0)**
+- [ ] 실시간 교통 API 연동
+- [ ] Push 알림 기능
+- [ ] 경로 저장 및 관리
+- [ ] 데이터 분석 고도화
+
+### 📅 **Phase 3: 고도화 (v0.3.0)**
+- [ ] AI 기반 경로 추천
+- [ ] 개인 패턴 학습
+- [ ] 위젯 지원
+- [ ] 오프라인 모드
+
+### 📅 **Phase 4: 출시 준비 (v1.0.0)**
+- [ ] 성능 최적화
+- [ ] 보안 강화
+- [ ] 앱스토어 출시 준비
+- [ ] 사용자 테스트
+
+---
+
+## ⚠️ 알려진 이슈
+
+### 🚧 **현재 제한사항**
+- 교통 정보는 Mock 데이터 사용
+- 경로 검색 결과는 UI만 구현
+- 분석 데이터는 임시 데이터
+- Push 알림 기능 미구현
+
+### 🔧 **해결 예정**
+- 실시간 API 연동으로 Mock 데이터 대체
+- 백엔드 서버 구축 후 데이터 분석 고도화
+- FCM 기반 알림 시스템 구현
+
+---
+
+
+**🚧 아직 개발 중인 프로젝트입니다 🚧**
+
+
+---
