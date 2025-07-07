@@ -73,10 +73,10 @@ class LocationService {
         return null;
       }
 
-      // 현재 위치 조회 (정확도 높음, 타임아웃 15초)
+      // 현재 위치 조회 (정확도 높음, 타임아웃 30초)
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 15),
+        timeLimit: const Duration(seconds: 30),
       );
 
       print('GPS 위치 조회 성공: ${position.latitude}, ${position.longitude}');
@@ -92,11 +92,40 @@ class LocationService {
 
         if (placemarks.isNotEmpty) {
           final place = placemarks[0];
-          address = '${place.administrativeArea} ${place.locality} ${place.thoroughfare}';
+          
+          // 주소 구성 요소 확인
+          final admin = place.administrativeArea ?? ''; // 서울특별시
+          final locality = place.locality ?? '';        // 마포구, 서울특별시 등
+          final subLocality = place.subLocality ?? '';  // 상암동
+          final thoroughfare = place.thoroughfare ?? ''; // 도로명
+          
+          print('주소 구성 요소: admin=$admin, locality=$locality, subLocality=$subLocality, thoroughfare=$thoroughfare');
+          
+          // 중복 제거하고 의미있는 부분만 조합
+          List<String> addressParts = [];
+          
+          // 1. 시/도 (서울특별시, 경기도 등)
+          if (admin.isNotEmpty) {
+            addressParts.add(admin);
+          }
+          
+          // 2. 구/군 (locality가 admin과 다르고 의미있는 경우만)
+          if (locality.isNotEmpty && locality != admin && !locality.contains('특별시') && !locality.contains('광역시')) {
+            addressParts.add(locality);
+          }
+          
+          // 3. 동/읍/면 (subLocality가 있으면 우선, 없으면 thoroughfare)
+          if (subLocality.isNotEmpty) {
+            addressParts.add(subLocality);
+          } else if (thoroughfare.isNotEmpty) {
+            addressParts.add(thoroughfare);
+          }
+          
+          address = addressParts.join(' ');
           print('주소 변환 성공: $address');
         }
       } catch (e) {
-        print('주소 변환 실패: $e');
+        print('1주소 변환 실패: $e');
         address = '위치 확인됨';
       }
 
@@ -111,6 +140,16 @@ class LocationService {
     } catch (e) {
       print('현재 위치 조회 오류: $e');
 
+      // 타임아웃 또는 일반 오류 시 마지막 위치 시도
+      if (e.toString().contains('TimeoutException')) {
+        print('GPS 타임아웃 발생, 마지막 위치 사용 시도...');
+        final lastLocation = await getLastKnownLocation();
+        if (lastLocation != null) {
+          print('마지막 위치로 대체 성공');
+          return lastLocation;
+        }
+      }
+
       if (e is LocationServiceDisabledException) {
         _showLocationServiceDialog();
       } else if (e is PermissionDeniedException) {
@@ -120,7 +159,8 @@ class LocationService {
           errorType: LocationErrorType.permissionDenied,
         ));
       } else {
-        _showLocationErrorDialog();
+        // 타임아웃이나 기타 오류 시 다이얼로그 표시하지 않음
+        print('위치 조회 실패, 저장된 위치 사용');
       }
 
       return null;

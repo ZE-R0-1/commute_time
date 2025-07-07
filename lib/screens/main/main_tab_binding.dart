@@ -2,7 +2,7 @@ import 'package:get/get.dart';
 
 import 'main_tab_controller.dart';
 import '../home/home_controller.dart';
-import '../map/map_controller.dart';
+import '../realtime/realtime_controller.dart';
 import '../analysis/analysis_controller.dart';
 import '../settings/settings_controller.dart';
 
@@ -21,9 +21,9 @@ class MainTabBinding extends Bindings {
       permanent: true,
     );
 
-    // 지도 화면 컨트롤러
-    Get.lazyPut<MapController>(
-          () => MapController(),
+    // 실시간 교통정보 화면 컨트롤러
+    Get.lazyPut<RealtimeController>(
+          () => RealtimeController(),
     );
 
     // 분석 화면 컨트롤러

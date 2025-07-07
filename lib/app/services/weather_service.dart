@@ -110,7 +110,14 @@ class WeatherService {
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        // API 응답이 XML인지 JSON인지 확인
+        final responseBody = response.body;
+        if (responseBody.trim().startsWith('<')) {
+          print('날씨 예보 API가 XML로 응답: ${responseBody.substring(0, 100)}...');
+          return [];
+        }
+        
+        final data = json.decode(responseBody);
         return _parseWeatherForecast(data);
       } else {
         print('날씨 예보 API 오류: ${response.statusCode}');

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../app/services/weather_service.dart';
+import '../../app/services/subway_service.dart';
 import 'home_controller.dart';
 
 class HomeScreen extends GetView<HomeController> {
@@ -29,13 +30,24 @@ class HomeScreen extends GetView<HomeController> {
 
                     const SizedBox(height: 20),
 
-                    // 출근 정보 카드
-                    _buildCommuteCard(),
+                    // 🆕 메인 액션 카드 (시간대별 동적)
+                    _buildMainActionCard(),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
-                    // 퇴근 정보 카드
-                    _buildReturnCard(),
+                    // 🆕 조건부 출근/퇴근 카드
+                    Obx(() {
+                      final commuteType = controller.currentCommuteType.value;
+                      if (commuteType == CommuteType.none) {
+                        return const SizedBox.shrink();
+                      }
+                      return _buildConditionalCommuteCards();
+                    }),
+
+                    const SizedBox(height: 20),
+
+                    // 🆕 실시간 지하철 정보
+                    _buildSubwayInfoCard(),
 
                     const SizedBox(height: 20),
 
@@ -697,6 +709,431 @@ class HomeScreen extends GetView<HomeController> {
         ),
       ],
     );
+  }
+
+  // 🆕 메인 액션 카드 (시간대별 동적)
+  Widget _buildMainActionCard() {
+    return Obx(() => Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: _getMainActionGradient(),
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: _getMainActionColor().withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 제목
+          Text(
+            controller.mainActionTitle.value,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          
+          const SizedBox(height: 12),
+          
+          // 경로
+          Row(
+            children: [
+              Icon(
+                Icons.route,
+                color: Colors.white.withValues(alpha: 0.9),
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                controller.mainActionRoute.value,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white.withValues(alpha: 0.9),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // 시간과 상세 정보
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // 소요시간
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    controller.mainActionTime.value,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    controller.mainActionDetail.value,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
+              
+              // 실시간 탭 이동 버튼
+              ElevatedButton(
+                onPressed: () {
+                  // 실시간 탭으로 이동
+                  final tabController = Get.find<dynamic>();
+                  if (tabController.runtimeType.toString().contains('MainTabController')) {
+                    tabController.changeTab(1); // 실시간 탭 인덱스
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: _getMainActionColor(),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                ),
+                child: const Text(
+                  '실시간 정보',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ));
+  }
+
+  // 🆕 조건부 출근/퇴근 카드
+  Widget _buildConditionalCommuteCards() {
+    final commuteType = controller.currentCommuteType.value;
+    
+    switch (commuteType) {
+      case CommuteType.toWork:
+        return _buildCommuteCard();
+      case CommuteType.toHome:
+        return _buildReturnCard();
+      case CommuteType.none:
+        return const SizedBox.shrink(); // 평상시에는 숨김
+    }
+  }
+
+  // 🆕 메인 액션 카드 색상 결정
+  Color _getMainActionColor() {
+    switch (controller.currentCommuteType.value) {
+      case CommuteType.toWork:
+        return Colors.blue;
+      case CommuteType.toHome:
+        return Colors.green;
+      case CommuteType.none:
+        final hour = DateTime.now().hour;
+        if (hour < 7 || hour > 20) return Colors.indigo;
+        return Colors.teal;
+    }
+  }
+
+  // 🆕 메인 액션 카드 그라데이션
+  List<Color> _getMainActionGradient() {
+    final baseColor = _getMainActionColor();
+    return [
+      baseColor,
+      baseColor.withValues(alpha: 0.8),
+    ];
+  }
+
+  // 🆕 실시간 지하철 정보 카드
+  Widget _buildSubwayInfoCard() {
+    return Obx(() => Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 헤더
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.train,
+                      color: Colors.blue,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '🚇 지하철 실시간',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (controller.nearestStationName.value.isNotEmpty)
+                        Text(
+                          controller.nearestStationName.value,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+              
+              // 실시간 탭으로 이동 버튼
+              InkWell(
+                onTap: () {
+                  final tabController = Get.find<dynamic>();
+                  if (tabController.runtimeType.toString().contains('MainTabController')) {
+                    tabController.changeTab(1); // 실시간 탭 인덱스
+                  }
+                },
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  child: Text(
+                    '더보기',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blue[600],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // 지하철 도착 정보
+          if (controller.isSubwayLoading.value)
+            _buildSubwayLoadingState()
+          else if (controller.nearestSubwayArrivals.isEmpty)
+            _buildSubwayEmptyState()
+          else
+            _buildSubwayArrivalList(),
+        ],
+      ),
+    ));
+  }
+
+  // 지하철 도착 정보 리스트
+  Widget _buildSubwayArrivalList() {
+    return Column(
+      children: controller.nearestSubwayArrivals.take(3).map((arrival) => 
+        _buildSubwayArrivalItem(arrival)
+      ).toList(),
+    );
+  }
+
+  // 개별 지하철 도착 정보
+  Widget _buildSubwayArrivalItem(SubwayArrival arrival) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Row(
+        children: [
+          // 노선 색상
+          Container(
+            width: 4,
+            height: 40,
+            decoration: BoxDecoration(
+              color: _getLineColor(arrival.subwayId),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          
+          const SizedBox(width: 12),
+          
+          // 도착 정보
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${arrival.subwayId} ${arrival.trainLineNm}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      arrival.arvlMsg2.isNotEmpty ? arrival.arvlMsg2 : arrival.arvlMsg3,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  arrival.arvlMsg3.isNotEmpty ? arrival.arvlMsg3 : '정보 없음',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 지하철 로딩 상태
+  Widget _buildSubwayLoadingState() {
+    return Column(
+      children: List.generate(2, (index) => Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                children: [
+                  Container(
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 12,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      )),
+    );
+  }
+
+  // 지하철 정보 없음 상태
+  Widget _buildSubwayEmptyState() {
+    return Container(
+      height: 80,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.train_outlined,
+            color: Colors.grey[400],
+            size: 24,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '근처 지하철 정보를 찾을 수 없습니다',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 지하철 노선별 색상
+  Color _getLineColor(String subwayId) {
+    switch (subwayId) {
+      case '1001': return const Color(0xFF0052A4); // 1호선
+      case '1002': return const Color(0xFF00A84D); // 2호선
+      case '1003': return const Color(0xFFEF7C1C); // 3호선
+      case '1004': return const Color(0xFF00A5DE); // 4호선
+      case '1005': return const Color(0xFF996CAC); // 5호선
+      case '1006': return const Color(0xFFCD7C2F); // 6호선
+      case '1007': return const Color(0xFF747F00); // 7호선
+      case '1008': return const Color(0xFFE6186C); // 8호선
+      case '1009': return const Color(0xFFBB8336); // 9호선
+      default: return Colors.grey;
+    }
   }
 
   // 교통 상황

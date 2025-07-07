@@ -15,9 +15,9 @@ class MainTabController extends GetxController {
       activeIcon: Icons.home,
     ),
     MainTabItem(
-      label: '지도',
-      icon: Icons.map_outlined,
-      activeIcon: Icons.map,
+      label: '실시간',
+      icon: Icons.train_outlined,
+      activeIcon: Icons.train,
     ),
     MainTabItem(
       label: '분석',
@@ -58,8 +58,8 @@ class MainTabController extends GetxController {
       // 🚫 자동 새로고침 제거 - _refreshHomeData() 호출 안함
         print('홈 탭으로 이동 (자동 새로고침 없음)');
         break;
-      case 1: // 지도
-        _initializeMapData();
+      case 1: // 실시간
+        _initializeRealtimeData();
         break;
       case 2: // 분석
         _loadAnalysisData();
@@ -81,9 +81,9 @@ class MainTabController extends GetxController {
   //   }
   // }
 
-  void _initializeMapData() {
-    print('지도 데이터 초기화');
-    // 지도 관련 데이터 로딩
+  void _initializeRealtimeData() {
+    print('실시간 교통정보 데이터 초기화');
+    // 실시간 교통정보 데이터 로딩
   }
 
   void _loadAnalysisData() {
@@ -105,7 +105,7 @@ class MainTabController extends GetxController {
       case 0:
         return '출퇴근 알리미';
       case 1:
-        return '경로 지도';
+        return '실시간 교통정보';
       case 2:
         return '출퇴근 분석';
       case 3:

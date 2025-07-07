@@ -35,6 +35,18 @@ void main() async {
   storage.write('user_name', '김직장');
   storage.write('work_start_time', '09:00');
   storage.write('work_end_time', '18:00');
+  
+  // 테스트용 위치 정보 (신림역 기준)
+  storage.write('home_address', '서울특별시 관악구 신림역');
+  storage.write('work_address', '서울특별시 서초구 매봉산로 45');
+  storage.write('current_latitude', 37.4842);
+  storage.write('current_longitude', 126.9293);
+  storage.write('current_address', '서울특별시 관악구 신림역');
+  storage.write('home_latitude', 37.4842);
+  storage.write('home_longitude', 126.9293);
+  storage.write('work_latitude', 37.4739);
+  storage.write('work_longitude', 127.0178);
+  storage.write('location_permission_granted', true);
 
   // 2. 온보딩 화면 테스트용 (위 코드 주석 처리하고 아래 코드 사용)
   // storage.erase(); // 모든 데이터 삭제 (첫 실행 테스트)

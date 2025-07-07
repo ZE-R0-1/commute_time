@@ -5,6 +5,7 @@ import 'package:get_storage/get_storage.dart';
 // 위치 및 날씨 서비스 import
 import '../../app/services/location_service.dart';
 import '../../app/services/weather_service.dart';
+import '../../app/services/subway_service.dart';
 
 class HomeController extends GetxController {
   final GetStorage _storage = GetStorage();
@@ -26,17 +27,28 @@ class HomeController extends GetxController {
   // 🆕 상세 비 예보 정보
   final Rx<RainForecastInfo?> rainForecast = Rx<RainForecastInfo?>(null);
 
+  // 🆕 실시간 지하철 정보
+  final RxList<SubwayArrival> nearestSubwayArrivals = <SubwayArrival>[].obs;
+  final RxString nearestStationName = ''.obs;
+  final RxBool isSubwayLoading = false.obs;
 
-  // 출근 정보
+  // 🆕 시간대별 메인 액션 정보
+  final RxString mainActionTitle = '🏠 집으로 가는 길'.obs;
+  final RxString mainActionRoute = '디지털미디어시티 → 신림'.obs;
+  final RxString mainActionTime = '37분 소요'.obs;
+  final RxString mainActionDetail = '도보 5분 + 지하철 32분'.obs;
+  final Rx<CommuteType> currentCommuteType = CommuteType.none.obs;
+
+  // 출근 정보 (출근 시간대에만 표시)
   final RxString recommendedDepartureTime = '8:15 출발 권장'.obs;
-  final RxString commuteRoute = '집 → 2호선 → 9호선 → 회사'.obs;
-  final RxString estimatedTime = '52분'.obs;
+  final RxString commuteRoute = '신림 → 디지털미디어시티'.obs;
+  final RxString estimatedTime = '45분'.obs;
   final RxString transportFee = '1,370원'.obs;
 
-  // 퇴근 정보
+  // 퇴근 정보 (퇴근 시간대에만 표시)
   final RxString recommendedOffTime = '6:10 퇴근 권장'.obs;
-  final RxString eveningSchedule = '7시 강남 약속 시간 고려'.obs;
-  final RxString bufferTime = '40분'.obs;
+  final RxString eveningSchedule = '여유롭게 집으로'.obs;
+  final RxString bufferTime = '37분'.obs;
 
   // 교통 상황
   final RxList<TransportStatus> transportStatus = <TransportStatus>[].obs;
@@ -104,6 +116,9 @@ class HomeController extends GetxController {
 
         // 현재 위치로 날씨 조회
         await _loadWeatherForLocation(location);
+        
+        // 🆕 실시간 지하철 정보 로드
+        await _loadNearestSubwayInfo(location);
 
       } else {
         // GPS 조회 실패시 기본 위치 사용 (강남역)
@@ -201,6 +216,54 @@ class HomeController extends GetxController {
     }
   }
 
+  // 🆕 실시간 지하철 정보 로드
+  Future<void> _loadNearestSubwayInfo(UserLocation location) async {
+    try {
+      isSubwayLoading.value = true;
+      
+      print('실시간 지하철 정보 조회 시작: ${location.address}');
+      
+      // 가장 가까운 지하철역 찾기
+      final stationName = await SubwayService.findNearestStation(
+        location.latitude, 
+        location.longitude
+      );
+      
+      if (stationName != null && stationName.isNotEmpty) {
+        nearestStationName.value = stationName;
+        
+        // 목적지 방향 결정 (집 방향)
+        final homeLat = _storage.read('home_latitude') as double?;
+        final homeLng = _storage.read('home_longitude') as double?;
+        String? destinationStation;
+        
+        if (homeLat != null && homeLng != null) {
+          destinationStation = await SubwayService.findNearestStation(homeLat, homeLng);
+        }
+        
+        // 실시간 도착 정보 조회 (필터링 적용)
+        final arrivals = await SubwayService.getRealtimeArrivalFiltered(
+          stationName,
+          destinationStation
+        );
+        
+        nearestSubwayArrivals.value = arrivals.take(3).toList(); // 최대 3개만 표시
+        
+        print('지하철 정보 로드 완료: $stationName (${arrivals.length}개)');
+      } else {
+        print('근처 지하철역을 찾을 수 없습니다');
+        nearestStationName.value = '';
+        nearestSubwayArrivals.clear();
+      }
+    } catch (e) {
+      print('지하철 정보 로드 오류: $e');
+      nearestStationName.value = '';
+      nearestSubwayArrivals.clear();
+    } finally {
+      isSubwayLoading.value = false;
+    }
+  }
+
 
   // 🔥 수동 전체 새로고침 (새로고침 버튼 전용)
   @override
@@ -266,24 +329,106 @@ class HomeController extends GetxController {
       // Mock: API 호출 시뮬레이션
       await Future.delayed(const Duration(seconds: 1));
 
-      // 현재 시간에 따른 동적 메시지
-      final now = DateTime.now();
-      final hour = now.hour;
+      // 🆕 시간대별 동적 업데이트
+      _updateTimeBasedInfo();
 
-      if (hour < 12) {
-        _updateMorningData();
-      } else if (hour < 18) {
-        _updateAfternoonData();
-      } else {
-        _updateEveningData();
-      }
-
-      print('교통 데이터 로드 완료: ${hour}시');
+      print('교통 데이터 로드 완료');
 
     } catch (e) {
       print('교통 데이터 로드 오류: $e');
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  // 🆕 시간대별 정보 업데이트
+  void _updateTimeBasedInfo() {
+    final now = DateTime.now();
+    final hour = now.hour;
+    
+    // 시간대 판단
+    currentCommuteType.value = _determineCommuteType();
+    
+    // 시간대별 메인 액션 카드 업데이트
+    switch (currentCommuteType.value) {
+      case CommuteType.toWork:
+        _updateToWorkInfo();
+        break;
+      case CommuteType.toHome:
+        _updateToHomeInfo();
+        break;
+      case CommuteType.none:
+        _updateNormalTimeInfo();
+        break;
+    }
+    
+    print('시간대 업데이트: ${currentCommuteType.value} ($hour시)');
+  }
+
+  // 🆕 출퇴근 시간 판단
+  CommuteType _determineCommuteType() {
+    final now = DateTime.now();
+    final hour = now.hour;
+    final minute = now.minute;
+    final currentTimeMinutes = hour * 60 + minute;
+
+    // 출근 시간대 (7:00 ~ 10:30)
+    if (currentTimeMinutes >= 7 * 60 && currentTimeMinutes <= 10 * 60 + 30) {
+      return CommuteType.toWork;
+    }
+
+    // 퇴근 시간대 (17:00 ~ 20:00)
+    if (currentTimeMinutes >= 17 * 60 && currentTimeMinutes <= 20 * 60) {
+      return CommuteType.toHome;
+    }
+
+    return CommuteType.none;
+  }
+
+  // 🆕 출근 시간 정보 업데이트
+  void _updateToWorkInfo() {
+    mainActionTitle.value = '🌅 회사로 가는 길';
+    mainActionRoute.value = '신림 → 디지털미디어시티';
+    mainActionTime.value = '45분 소요';
+    mainActionDetail.value = '도보 8분 + 지하철 37분';
+    
+    recommendedDepartureTime.value = '8:15 출발 권장';
+    commuteRoute.value = '신림 → 디지털미디어시티';
+    estimatedTime.value = '45분';
+    transportFee.value = '1,370원';
+  }
+
+  // 🆕 퇴근 시간 정보 업데이트
+  void _updateToHomeInfo() {
+    mainActionTitle.value = '🏠 집으로 가는 길';
+    mainActionRoute.value = '디지털미디어시티 → 신림';
+    mainActionTime.value = '37분 소요';
+    mainActionDetail.value = '도보 5분 + 지하철 32분';
+    
+    recommendedOffTime.value = '6:10 퇴근 권장';
+    eveningSchedule.value = '여유롭게 집으로';
+    bufferTime.value = '37분';
+  }
+
+  // 🆕 평상시 정보 업데이트
+  void _updateNormalTimeInfo() {
+    final hour = DateTime.now().hour;
+    
+    if (hour < 7) {
+      mainActionTitle.value = '🌅 오늘 출근 준비';
+      mainActionRoute.value = '신림 → 디지털미디어시티';
+      mainActionTime.value = '45분 예상';
+      mainActionDetail.value = '여유롭게 준비하세요';
+    } else if (hour > 20) {
+      mainActionTitle.value = '🌙 수고하셨습니다';
+      mainActionRoute.value = '내일 출근 준비';
+      mainActionTime.value = '푹 쉬세요';
+      mainActionDetail.value = '좋은 하루였어요';
+    } else {
+      mainActionTitle.value = '🚇 지하철 정보';
+      mainActionRoute.value = '실시간 교통 상황';
+      mainActionTime.value = '평상시 운행';
+      mainActionDetail.value = '정상 운행 중';
     }
   }
 
