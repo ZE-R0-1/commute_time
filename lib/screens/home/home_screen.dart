@@ -796,28 +796,30 @@ class HomeScreen extends GetView<HomeController> {
               ),
               
               // 실시간 탭 이동 버튼
-              ElevatedButton(
-                onPressed: () {
-                  // 실시간 탭으로 이동
-                  final tabController = Get.find<dynamic>();
-                  if (tabController.runtimeType.toString().contains('MainTabController')) {
-                    tabController.changeTab(1); // 실시간 탭 인덱스
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: _getMainActionColor(),
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
+              Flexible(
+                child: ElevatedButton(
+                  onPressed: () {
+                    // 실시간 탭으로 이동
+                    final tabController = Get.find<dynamic>();
+                    if (tabController.runtimeType.toString().contains('MainTabController')) {
+                      tabController.changeTab(1); // 실시간 탭 인덱스
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: _getMainActionColor(),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(25),
+                    ),
                   ),
-                ),
-                child: const Text(
-                  '실시간 정보',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                  child: const Text(
+                    '실시간 정보',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),
@@ -1008,13 +1010,17 @@ class HomeScreen extends GetView<HomeController> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      '${arrival.subwayId} ${arrival.trainLineNm}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Text(
+                        '${(arrival.subwayId)} ${arrival.cleanTrainLineNm}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       arrival.arvlMsg2.isNotEmpty ? arrival.arvlMsg2 : arrival.arvlMsg3,
                       style: TextStyle(

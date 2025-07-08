@@ -73,10 +73,10 @@ class LocationService {
         return null;
       }
 
-      // 현재 위치 조회 (정확도 높음, 타임아웃 30초)
+      // 현재 위치 조회 (정확도 높음, 타임아웃 10초)
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 30),
+        timeLimit: const Duration(seconds: 10),
       );
 
       print('GPS 위치 조회 성공: ${position.latitude}, ${position.longitude}');
@@ -177,7 +177,7 @@ class LocationService {
         return UserLocation(
           latitude: position.latitude,
           longitude: position.longitude,
-          address: '마지막 위치',
+          address: '현재 위치',
           accuracy: position.accuracy,
           timestamp: position.timestamp ?? DateTime.now(),
         );

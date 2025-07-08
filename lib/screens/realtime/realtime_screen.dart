@@ -39,7 +39,7 @@ class RealtimeScreen extends GetView<RealtimeController> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -51,17 +51,17 @@ class RealtimeScreen extends GetView<RealtimeController> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              Obx(() => Text(
                 controller.currentTimeText,
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
-              ),
+              )),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: _getCommuteTypeColor().withOpacity(0.1),
+                  color: _getCommuteTypeColor().withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -85,15 +85,53 @@ class RealtimeScreen extends GetView<RealtimeController> {
               ),
               const SizedBox(width: 4),
               Expanded(
-                child: Text(
-                  controller.currentAddress.value.isEmpty 
-                      ? '위치 정보 없음' 
-                      : controller.currentAddress.value,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
+                child: Obx(() {
+                  if (controller.currentAddress.value == '위치를 확인하는 중...') {
+                    return Row(
+                      children: [
+                        SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '위치를 확인하는 중...',
+                          style: TextStyle(
+                            color: Colors.blue[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                  return Text(
+                    controller.currentAddress.value.isEmpty 
+                        ? '위치 정보 없음' 
+                        : controller.currentAddress.value,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
+                    ),
+                  );
+                }),
+              ),
+              // 위치 새로고침 버튼
+              IconButton(
+                onPressed: controller.refreshLocation,
+                icon: Icon(
+                  Icons.my_location,
+                  size: 18,
+                  color: Colors.blue[600],
                 ),
+                constraints: const BoxConstraints(
+                  minWidth: 24,
+                  minHeight: 24,
+                ),
+                padding: EdgeInsets.zero,
               ),
             ],
           ),
@@ -106,13 +144,13 @@ class RealtimeScreen extends GetView<RealtimeController> {
                 color: Colors.grey[600],
               ),
               const SizedBox(width: 4),
-              Text(
+              Obx(() => Text(
                 controller.commuteDirectionText,
                 style: TextStyle(
                   color: Colors.grey[600],
                   fontSize: 14,
                 ),
-              ),
+              )),
             ],
           ),
         ],
@@ -234,6 +272,21 @@ class RealtimeScreen extends GetView<RealtimeController> {
                     fontSize: 14,
                   ),
                 ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: controller.refresh,
+                  icon: Icon(
+                    Icons.refresh,
+                    color: Colors.blue.shade600,
+                    size: 20,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
+                  padding: EdgeInsets.zero,
+                  tooltip: '새로고침',
+                ),
               ],
             ),
           ),
@@ -264,7 +317,7 @@ class RealtimeScreen extends GetView<RealtimeController> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -296,7 +349,7 @@ class RealtimeScreen extends GetView<RealtimeController> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  arrival.trainLineNm,
+                  arrival.cleanTrainLineNm,
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -313,20 +366,57 @@ class RealtimeScreen extends GetView<RealtimeController> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    if (arrival.isLastTrain)
+                    // 열차 종류 표시 (급행/일반/특급 등)
+                    if (arrival.btrainSttus.isNotEmpty && arrival.btrainSttus != '일반')
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.red.shade100,
+                          color: _getTrainTypeColor(arrival.btrainSttus),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          '막차',
-                          style: TextStyle(
+                          arrival.btrainSttus,
+                          style: const TextStyle(
                             fontSize: 10,
-                            color: Colors.red.shade700,
+                            color: Colors.white,
                             fontWeight: FontWeight.w600,
                           ),
+                        ),
+                      ),
+                    if (arrival.btrainSttus.isNotEmpty && arrival.btrainSttus != '일반' && arrival.isLastTrain)
+                      const SizedBox(width: 4),
+                    if (arrival.isLastTrain)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade600,
+                          borderRadius: BorderRadius.circular(6),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.red.withValues(alpha: 0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.warning,
+                              size: 12,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              '막차',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                   ],
@@ -335,25 +425,38 @@ class RealtimeScreen extends GetView<RealtimeController> {
             ),
           ),
           
-          // 도착 시간
+          // 도착 시간 및 상세 정보
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                arrival.arrivalTimeText,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: _getArrivalColor(arrival.arvlCd),
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    arrival.arrivalStatusIcon,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(width: 4),
+                  Obx(() => Text(
+                    controller.getRealtimeArrivalTime(arrival),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: _getArrivalColor(arrival.arvlCd),
+                    ),
+                  )),
+                ],
               ),
               const SizedBox(height: 2),
               Text(
-                arrival.btrainSttus,
+                arrival.detailedArrivalInfo.isNotEmpty 
+                    ? arrival.detailedArrivalInfo 
+                    : _cleanStatusText(arrival.btrainSttus),
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: Colors.grey[600],
                 ),
+                textAlign: TextAlign.end,
               ),
             ],
           ),
@@ -375,19 +478,54 @@ class RealtimeScreen extends GetView<RealtimeController> {
     }
   }
 
-  // 지하철 호선 색상
+  // 지하철 호선 색상 (수도권 전체)
   Color _getLineColor(String subwayId) {
     switch (subwayId) {
-      case '1001': return const Color(0xFF0052A4); // 1호선
-      case '1002': return const Color(0xFF00A84D); // 2호선
-      case '1003': return const Color(0xFFEF7C1C); // 3호선
-      case '1004': return const Color(0xFF00A5DE); // 4호선
-      case '1005': return const Color(0xFF996CAC); // 5호선
-      case '1006': return const Color(0xFFCD7C2F); // 6호선
-      case '1007': return const Color(0xFF747F00); // 7호선
-      case '1008': return const Color(0xFFEA545D); // 8호선
-      case '1009': return const Color(0xFFBDB092); // 9호선
-      default: return Colors.grey;
+      // 서울지하철 1~9호선
+      case '1001': return const Color(0xFF0052A4); // 1호선 (진파랑)
+      case '1002': return const Color(0xFF00A84D); // 2호선 (초록)
+      case '1003': return const Color(0xFFEF7C1C); // 3호선 (주황)
+      case '1004': return const Color(0xFF00A5DE); // 4호선 (하늘)
+      case '1005': return const Color(0xFF996CAC); // 5호선 (보라)
+      case '1006': return const Color(0xFFCD7C2F); // 6호선 (갈색)
+      case '1007': return const Color(0xFF747F00); // 7호선 (올리브)
+      case '1008': return const Color(0xFFEA545D); // 8호선 (분홍)
+      case '1009': return const Color(0xFFBDB092); // 9호선 (금색)
+      
+      // 수도권 광역철도
+      case '1061': return const Color(0xFF0C8E72); // 중앙선 (청록)
+      case '1063': return const Color(0xFF77C4A3); // 경의중앙선 (연청록)
+      case '1065': return const Color(0xFF0090D2); // 공항철도 (진하늘)
+      case '1067': return const Color(0xFF178C4B); // 경춘선 (청록)
+      case '1075': return const Color(0xFFEAB026); // 수인분당선 (노랑)
+      case '1077': return const Color(0xFFD31145); // 신분당선 (빨강)
+      case '1092': return const Color(0xFFB7CE63); // 우이신설선 (연노랑)
+      case '1093': return const Color(0xFF8FC31F); // 서해선 (연두)
+      case '1081': return const Color(0xFF003DA5); // 경강선 (진파랑)
+      case '1032': return const Color(0xFF9B1B7E); // GTX-A (자주)
+      
+      // 인천지하철
+      case '1091': return const Color(0xFF759CCE); // 인천1호선 (하늘)
+      case '1094': return const Color(0xFFE6A829); // 인천2호선 (주황)
+      
+      // 대구지하철
+      case '2001': return const Color(0xFFD93F3F); // 대구1호선 (빨강)
+      case '2002': return const Color(0xFF00B04F); // 대구2호선 (초록)
+      case '2003': return const Color(0xFFFFB100); // 대구3호선 (노랑)
+      
+      // 부산지하철
+      case '3001': return const Color(0xFFEC7545); // 부산1호선 (주황)
+      case '3002': return const Color(0xFF81BF42); // 부산2호선 (연두)
+      case '3003': return const Color(0xFFBB8C00); // 부산3호선 (갈색)
+      case '3004': return const Color(0xFF217DCB); // 부산4호선 (파랑)
+      
+      // 광주지하철
+      case '4001': return const Color(0xFF009639); // 광주1호선 (초록)
+      
+      // 대전지하철
+      case '5001': return const Color(0xFF007448); // 대전1호선 (녹색)
+      
+      default: return Colors.grey; // 알 수 없는 노선
     }
   }
 
@@ -403,5 +541,22 @@ class RealtimeScreen extends GetView<RealtimeController> {
       case 99: return Colors.grey;      // 운행중
       default: return Colors.black;
     }
+  }
+
+  // 열차 종류 색상
+  Color _getTrainTypeColor(String trainType) {
+    switch (trainType) {
+      case '급행': return Colors.red.shade600;      // 급행
+      case 'ITX': return Colors.purple.shade600;   // ITX
+      case '특급': return Colors.orange.shade600;   // 특급
+      case '직행': return Colors.blue.shade600;     // 직행
+      default: return Colors.grey.shade600;        // 기타
+    }
+  }
+  
+  // 상태 텍스트 정리 (대괄호 제거)
+  String _cleanStatusText(String statusText) {
+    // [5]번째 전역 → 5번째 전역
+    return statusText.replaceAll(RegExp(r'\[(\d+)\]'), r'$1');
   }
 }

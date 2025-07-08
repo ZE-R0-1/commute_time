@@ -556,7 +556,28 @@ class SubwayArrival {
     }
   }
 
-  // 도착 시간 텍스트
+  // 대괄호 제거된 깔끔한 행선지명
+  String get cleanTrainLineNm {
+    // 역명에 '역' 추가하고 상태 정보 정리
+    String cleaned = trainLineNm;
+    
+    // [숫자]번째 전역 -> 숫자번째 전역 형태로 변경
+    cleaned = cleaned.replaceAll(RegExp(r'\[(\d+)\]번째'), r'$1번째');
+    
+    // 역명에 '역' 추가 (이미 '역'이 있으면 추가하지 않음)
+    if (cleaned.contains('도착') || cleaned.contains('진입') || cleaned.contains('출발')) {
+      // 도착, 진입, 출발 등의 상태가 있는 경우
+      final parts = cleaned.split(' ');
+      if (parts.isNotEmpty && !parts[0].endsWith('역')) {
+        parts[0] = parts[0] + '역';
+        cleaned = parts.join(' ');
+      }
+    }
+    
+    return cleaned.trim();
+  }
+
+  // 도착 시간 텍스트 (실시간 업데이트용)
   String get arrivalTimeText {
     if (barvlDt == 0) {
       return arvlMsg2;
@@ -564,6 +585,58 @@ class SubwayArrival {
       final minutes = (barvlDt / 60).floor();
       final seconds = barvlDt % 60;
       return '${minutes}분 ${seconds}초';
+    }
+  }
+  
+  // 실시간 도착 시간 계산 (초 단위 감소)
+  String getUpdatedArrivalTime(int elapsedSeconds) {
+    if (barvlDt == 0) {
+      return arvlMsg2;
+    }
+    
+    final remainingSeconds = (barvlDt - elapsedSeconds).clamp(0, barvlDt);
+    if (remainingSeconds == 0) {
+      return '곧 도착';
+    }
+    
+    final minutes = (remainingSeconds / 60).floor();
+    final seconds = remainingSeconds % 60;
+    return '${minutes}분 ${seconds}초';
+  }
+
+  // 상세한 도착 정보 (arvlMsg2 + arvlMsg3 조합)
+  String get detailedArrivalInfo {
+    // arvlMsg2: "서울 도착", "서울 진입", "서울 출발" 등
+    // arvlMsg3: "서울", "남영" 등의 구체적 위치
+    
+    if (arvlMsg2.isEmpty && arvlMsg3.isEmpty) {
+      return '';
+    }
+    
+    // arvlMsg2가 역명을 포함하고 있는 경우
+    if (arvlMsg2.contains('도착') || arvlMsg2.contains('진입') || arvlMsg2.contains('출발')) {
+      return arvlMsg2;
+    }
+    
+    // arvlMsg3에 추가 위치 정보가 있는 경우
+    if (arvlMsg3.isNotEmpty && arvlMsg3 != statnNm) {
+      return '$arvlMsg3 $arvlMsg2';
+    }
+    
+    return arvlMsg2.isNotEmpty ? arvlMsg2 : arvlMsg3;
+  }
+
+  // 도착 상태 아이콘
+  String get arrivalStatusIcon {
+    switch (arvlCd) {
+      case 0: return '🚇'; // 진입
+      case 1: return '🔵'; // 도착
+      case 2: return '🟢'; // 출발
+      case 3: return '⚪'; // 전역출발
+      case 4: return '🟡'; // 전역진입
+      case 5: return '🔵'; // 전역도착
+      case 99: return '🚆'; // 운행중
+      default: return '⚫';
     }
   }
 

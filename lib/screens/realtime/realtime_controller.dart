@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -16,6 +17,11 @@ class RealtimeController extends GetxController {
   final RxString currentStation = ''.obs;
   final Rx<CommuteType> commuteType = CommuteType.none.obs;
   
+  // 실시간 카운트다운 관련
+  Timer? _countdownTimer;
+  final RxInt _elapsedSeconds = 0.obs;
+  DateTime? _lastDataUpdateTime;
+  
   // 위치 정보
   final RxDouble currentLatitude = 0.0.obs;
   final RxDouble currentLongitude = 0.0.obs;
@@ -32,6 +38,13 @@ class RealtimeController extends GetxController {
     super.onInit();
     _loadUserData();
     _initializeRealtimeData();
+    _startCountdownTimer();
+  }
+  
+  @override
+  void onClose() {
+    _countdownTimer?.cancel();
+    super.onClose();
   }
 
   // 사용자 데이터 로드
@@ -41,15 +54,15 @@ class RealtimeController extends GetxController {
     workStartTime.value = _storage.read('work_start_time') ?? '';
     workEndTime.value = _storage.read('work_end_time') ?? '';
     
-    // 현재 위치 정보 (저장된 것이 있으면 사용)
-    currentLatitude.value = _storage.read('current_latitude') ?? 0.0;
-    currentLongitude.value = _storage.read('current_longitude') ?? 0.0;
-    currentAddress.value = _storage.read('current_address') ?? '';
-    
-    print('사용자 데이터 로드 완료');
+    print('=== 사용자 기본 데이터 로드 완료 ===');
     print('집: ${homeAddress.value}');
     print('회사: ${workAddress.value}');
     print('근무시간: ${workStartTime.value} ~ ${workEndTime.value}');
+    
+    // 현재 위치는 실시간 조회를 우선하고, 실패시에만 저장된 값 사용
+    currentAddress.value = '위치를 확인하는 중...';
+    currentLatitude.value = 0.0;
+    currentLongitude.value = 0.0;
   }
 
   // 실시간 데이터 초기화
@@ -67,8 +80,11 @@ class RealtimeController extends GetxController {
       // 3. 지하철 실시간 정보 로드
       await _loadSubwayData();
       
+      // 4. 실시간 카운트다운 시작
+      _resetCountdownTimer();
+      
     } catch (e) {
-      errorMessage.value = '데이터 로드 중 오류가 발생했습니다: $e';
+      errorMessage.value = '지하철 정보를 불러올 수 없습니다.\n잠시 후 다시 시도해주세요.';
       print('실시간 데이터 초기화 오류: $e');
     } finally {
       isLoading.value = false;
@@ -92,24 +108,41 @@ class RealtimeController extends GetxController {
         await _storage.write('current_longitude', location.longitude);
         await _storage.write('current_address', location.address);
         
-        print('실시간 위치 업데이트: ${location.address}');
+        print('실시간 위치 업데이트 성공: ${location.address}');
         print('좌표: ${location.latitude}, ${location.longitude}');
+        print('정확도: ${location.accuracyText}');
         return;
       }
       
-      // 실시간 위치 조회 실패시 저장된 위치 사용
+      print('실시간 위치 조회 실패 - 대체 방법 시도 중...');
+      
+      // 1차: 마지막 알려진 위치 시도 (GPS 캐시)
+      final lastLocation = await LocationService.getLastKnownLocation();
+      if (lastLocation != null) {
+        currentLatitude.value = lastLocation.latitude;
+        currentLongitude.value = lastLocation.longitude;
+        currentAddress.value = lastLocation.address;
+        print('GPS 마지막 위치 사용: ${lastLocation.address}');
+        return;
+      }
+      
+      // 2차: 저장된 위치 정보 시도 (앱 저장소)
       final savedLat = _storage.read('current_latitude') as double?;
       final savedLng = _storage.read('current_longitude') as double?;
       final savedAddress = _storage.read('current_address') as String?;
       
-      if (savedLat != null && savedLng != null && savedAddress != null) {
+      print('저장된 위치 정보: lat=$savedLat, lng=$savedLng, address=$savedAddress');
+      
+      if (savedLat != null && savedLng != null && savedAddress != null && savedAddress.isNotEmpty) {
         currentLatitude.value = savedLat;
         currentLongitude.value = savedLng;
-        currentAddress.value = savedAddress;
+        currentAddress.value = '이전 위치: $savedAddress';
         print('저장된 위치 정보 사용: $savedAddress');
         print('좌표: $savedLat, $savedLng');
       } else {
-        print('위치 정보를 가져올 수 없습니다');
+        print('모든 위치 정보 없음 - 위치 권한 확인 필요');
+        currentAddress.value = '위치를 찾을 수 없습니다';
+        _checkLocationStatus();
       }
     } catch (e) {
       print('위치 업데이트 오류: $e');
@@ -125,6 +158,12 @@ class RealtimeController extends GetxController {
         currentAddress.value = savedAddress;
         print('오류로 인해 저장된 위치 정보 사용: $savedAddress');
         print('좌표: $savedLat, $savedLng');
+      } else {
+        print('저장된 위치 정보도 없음 - 사용자에게 위치 활성화 요청');
+        currentAddress.value = '위치 권한을 확인해주세요';
+        
+        // 위치 권한 상태 확인 및 사용자 알림
+        _checkLocationStatus();
       }
     }
   }
@@ -177,17 +216,21 @@ class RealtimeController extends GetxController {
         );
         subwayArrivals.value = arrivals;
         
+        // 데이터 업데이트 시간 기록
+        _lastDataUpdateTime = DateTime.now();
+        _elapsedSeconds.value = 0;
+        
         if (destinationStation != null) {
           print('지하철 실시간 정보 로드 완료: $targetStation → $destinationStation (${arrivals.length}개)');
         } else {
           print('지하철 실시간 정보 로드 완료: $targetStation (전체 ${arrivals.length}개)');
         }
       } else {
-        errorMessage.value = '근처 지하철역을 찾을 수 없습니다';
+        errorMessage.value = '근처에 지하철역이 없습니다.\n다른 위치에서 시도해주세요.';
         print('지하철역을 찾을 수 없음');
       }
     } catch (e) {
-      errorMessage.value = '지하철 정보 로드 실패: $e';
+      errorMessage.value = '지하철 정보를 불러올 수 없습니다.\n네트워크를 확인해주세요.';
       print('지하철 데이터 로드 오류: $e');
     }
   }
@@ -197,6 +240,7 @@ class RealtimeController extends GetxController {
   Future<void> refresh() async {
     print('실시간 정보 새로고침');
     await _loadSubwayData();
+    _resetCountdownTimer();
   }
 
   // 위치 새로고침 (실시간 위치 강제 조회)
@@ -222,6 +266,7 @@ class RealtimeController extends GetxController {
         
         // 새로운 위치 기반으로 지하철 정보 다시 로드
         await _loadSubwayData();
+        _resetCountdownTimer();
         
         Get.snackbar(
           '위치 업데이트',
@@ -232,7 +277,7 @@ class RealtimeController extends GetxController {
       } else {
         Get.snackbar(
           '위치 오류',
-          '현재 위치를 가져올 수 없습니다',
+          '현재 위치를 찾을 수 없습니다.\nGPS가 켜져 있는지 확인해주세요.',
           snackPosition: SnackPosition.TOP,
           backgroundColor: Colors.red.shade100,
         );
@@ -241,7 +286,7 @@ class RealtimeController extends GetxController {
       print('위치 강제 업데이트 오류: $e');
       Get.snackbar(
         '위치 오류',
-        '위치 정보 업데이트 중 오류가 발생했습니다',
+        '위치 정보를 업데이트할 수 없습니다.\n잠시 후 다시 시도해주세요.',
         snackPosition: SnackPosition.TOP,
         backgroundColor: Colors.red.shade100,
       );
@@ -270,18 +315,79 @@ class RealtimeController extends GetxController {
       case CommuteType.toHome:
         return '회사 → 집';
       case CommuteType.none:
-        return '현재 위치 기준';
+        // 현재 시간 기준으로 더 구체적인 정보 제공
+        final now = DateTime.now();
+        final hour = now.hour;
+        if (hour >= 6 && hour < 12) {
+          return '오전 시간대';
+        } else if (hour >= 12 && hour < 18) {
+          return '오후 시간대';
+        } else {
+          return '저녁/밤 시간대';
+        }
     }
   }
 
-  // 현재 시간 텍스트
+  // 현재 시간 텍스트 (실시간 업데이트)
+  final RxString _currentTime = ''.obs;
   String get currentTimeText {
+    if (_currentTime.value.isEmpty) {
+      _updateCurrentTime();
+    }
+    return _currentTime.value;
+  }
+  
+  void _updateCurrentTime() {
     final now = DateTime.now();
-    return '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    _currentTime.value = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
   }
 
   // 지하철 정보가 있는지 확인
   bool get hasSubwayData {
     return subwayArrivals.isNotEmpty;
+  }
+  
+  // 위치 상태 확인 및 사용자 알림
+  Future<void> _checkLocationStatus() async {
+    try {
+      final permissionResult = await LocationService.checkLocationPermission();
+      if (!permissionResult.success) {
+        print('위치 권한 문제: ${permissionResult.message}');
+        currentAddress.value = '위치 권한이 필요합니다';
+      }
+    } catch (e) {
+      print('위치 상태 확인 오류: $e');
+    }
+  }
+  
+  // 실시간 카운트다운 타이머 시작
+  void _startCountdownTimer() {
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      // 현재 시간 업데이트
+      _updateCurrentTime();
+      
+      if (_lastDataUpdateTime != null) {
+        final elapsed = DateTime.now().difference(_lastDataUpdateTime!).inSeconds;
+        _elapsedSeconds.value = elapsed;
+        
+        // 3분마다 자동 새로고침
+        if (elapsed > 0 && elapsed % 180 == 0) {
+          print('자동 새로고침 (3분 경과)');
+          refresh();
+        }
+      }
+    });
+  }
+  
+  // 카운트다운 타이머 리셋
+  void _resetCountdownTimer() {
+    _lastDataUpdateTime = DateTime.now();
+    _elapsedSeconds.value = 0;
+  }
+  
+  // 실시간 업데이트된 도착 시간 텍스트 가져오기
+  String getRealtimeArrivalTime(SubwayArrival arrival) {
+    return arrival.getUpdatedArrivalTime(_elapsedSeconds.value);
   }
 }
