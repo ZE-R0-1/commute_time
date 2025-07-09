@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'main_tab_controller.dart';
 import '../home/home_controller.dart';
 import '../realtime/realtime_controller.dart';
-import '../analysis/analysis_controller.dart';
 import '../settings/settings_controller.dart';
 
 class MainTabBinding extends Bindings {
@@ -26,10 +25,6 @@ class MainTabBinding extends Bindings {
           () => RealtimeController(),
     );
 
-    // 분석 화면 컨트롤러
-    Get.lazyPut<AnalysisController>(
-          () => AnalysisController(),
-    );
 
     // 설정 화면 컨트롤러
     Get.lazyPut<SettingsController>(

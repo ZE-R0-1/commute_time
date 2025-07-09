@@ -20,11 +20,6 @@ class MainTabController extends GetxController {
       activeIcon: Icons.train,
     ),
     MainTabItem(
-      label: '분석',
-      icon: Icons.analytics_outlined,
-      activeIcon: Icons.analytics,
-    ),
-    MainTabItem(
       label: '설정',
       icon: Icons.settings_outlined,
       activeIcon: Icons.settings,
@@ -61,10 +56,7 @@ class MainTabController extends GetxController {
       case 1: // 실시간
         _initializeRealtimeData();
         break;
-      case 2: // 분석
-        _loadAnalysisData();
-        break;
-      case 3: // 설정
+      case 2: // 설정
         _loadSettingsData();
         break;
     }
@@ -86,10 +78,6 @@ class MainTabController extends GetxController {
     // 실시간 교통정보 데이터 로딩
   }
 
-  void _loadAnalysisData() {
-    print('분석 데이터 로딩');
-    // 분석 데이터 로딩
-  }
 
   void _loadSettingsData() {
     print('설정 데이터 로딩');
@@ -107,8 +95,6 @@ class MainTabController extends GetxController {
       case 1:
         return '실시간 교통정보';
       case 2:
-        return '출퇴근 분석';
-      case 3:
         return '설정';
       default:
         return '출퇴근 알리미';

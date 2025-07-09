@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import 'main_tab_controller.dart';
 import '../home/home_screen.dart';
 import '../realtime/realtime_screen.dart';
-import '../analysis/analysis_screen.dart';
 import '../settings/settings_screen.dart';
 
 class MainTabScreen extends GetView<MainTabController> {
@@ -21,9 +20,6 @@ class MainTabScreen extends GetView<MainTabController> {
 
           // 실시간 교통정보 화면
           const RealtimeScreen(),
-
-          // 분석 화면
-          const AnalysisScreen(),
 
           // 설정 화면
           const SettingsScreen(),
