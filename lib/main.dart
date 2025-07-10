@@ -31,7 +31,7 @@ void main() async {
 
   // 1. 🔥 메인 화면(탭바) 테스트용 - 온보딩 완료 상태로 설정
   storage.erase(); // 기존 데이터 삭제
-  storage.write('onboarding_completed', true);
+  storage.write('onboarding_completed', false);
   storage.write('user_name', '김직장');
   storage.write('work_start_time', '09:00');
   storage.write('work_end_time', '18:00');

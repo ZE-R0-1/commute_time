@@ -13,4 +13,10 @@ abstract class Routes {
   static const mapSetup = '/map-setup';
   static const routeDetail = '/route-detail';
   static const profile = '/profile';
+  
+  // 경로 설정 화면들
+  static const routeDeparture = '/route-departure';
+  static const routeTransfer = '/route-transfer';
+  static const routeArrival = '/route-arrival';
+  static const mapSelection = '/map-selection';
 }

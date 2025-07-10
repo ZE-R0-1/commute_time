@@ -8,6 +8,7 @@ import 'widgets/step_location_permission.dart';
 import 'widgets/step_home_address.dart';
 import 'widgets/step_work_address.dart';
 import 'widgets/step_work_time.dart';
+import 'widgets/step_route_setup.dart';
 
 class OnboardingScreen extends GetView<OnboardingController> {
   const OnboardingScreen({super.key});
@@ -124,6 +125,8 @@ class OnboardingScreen extends GetView<OnboardingController> {
         return const StepWorkAddress(key: ValueKey('work'));
       case 4:
         return const StepWorkTime(key: ValueKey('time'));
+      case 5:
+        return const StepRouteSetup(key: ValueKey('route'));
       default:
         return const StepWelcome(key: ValueKey('default'));
     }

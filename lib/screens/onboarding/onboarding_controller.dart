@@ -15,7 +15,7 @@ class OnboardingController extends GetxController {
   final RxInt currentStep = 0.obs;
 
   // 총 단계 수
-  final int totalSteps = 5;
+  final int totalSteps = 6;
 
   // 각 단계별 완료 상태
   final RxList<bool> stepCompleted = <bool>[].obs;
@@ -29,6 +29,12 @@ class OnboardingController extends GetxController {
   // 🆕 주소 검색 결과 저장 (좌표 정보 포함)
   final Rx<AddressResult?> selectedHomeAddress = Rx<AddressResult?>(null);
   final Rx<AddressResult?> selectedWorkAddress = Rx<AddressResult?>(null);
+  
+  // 🆕 경로 설정 데이터
+  final RxBool routeSetupCompleted = false.obs;
+  final RxString selectedDeparture = ''.obs;
+  final RxString selectedArrival = ''.obs;
+  final RxList<String> selectedTransfers = <String>[].obs;
 
   // 🆕 실제 위치 권한 및 정보
   final RxBool locationPermissionGranted = false.obs;
@@ -89,6 +95,8 @@ class OnboardingController extends GetxController {
         return workAddress.value.isNotEmpty;
       case 4: // 근무 시간
         return workStartTime.value != null && workEndTime.value != null;
+      case 5: // 경로 설정
+        return routeSetupCompleted.value;
       default:
         return false;
     }
@@ -423,6 +431,8 @@ class OnboardingController extends GetxController {
         return '회사 주소를\n설정해주세요 🏢';
       case 4:
         return '근무 시간을\n설정해주세요 ⏰';
+      case 5:
+        return '집→회사 경로를\n설정해주세요 🚌';
       default:
         return '';
     }
@@ -441,6 +451,8 @@ class OnboardingController extends GetxController {
         return '퇴근 시 교통상황을 확인하기 위해\n회사 주소를 입력해주세요.';
       case 4:
         return '출퇴근 알림과 교통상황 안내를 위해\n근무 시간을 설정해주세요.';
+      case 5:
+        return '출발지, 환승지, 도착지를 설정하여\n최적의 출퇴근 경로를 만들어보세요.';
       default:
         return '';
     }
