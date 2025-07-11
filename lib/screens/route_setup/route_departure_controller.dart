@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import '../../app/services/kakao_address_service.dart';
-import '../../app/services/kakao_subway_service.dart';
+import '../../app/services/seoul_subway_service.dart';
 import '../../app/services/location_service.dart';
 import '../onboarding/onboarding_controller.dart';
 
@@ -18,7 +18,7 @@ class RouteDepartureController extends GetxController {
   Timer? _debounceTimer;
   
   // 지하철역 검색
-  final RxList<SubwayStation> subwaySearchResults = <SubwayStation>[].obs;
+  final RxList<SeoulSubwayStation> subwaySearchResults = <SeoulSubwayStation>[].obs;
   final RxBool isSubwaySearching = false.obs;
   Timer? _subwayDebounceTimer;
   
@@ -34,7 +34,7 @@ class RouteDepartureController extends GetxController {
     
     // 디버깅: API 키 상태 확인
     print('🚇 RouteDepartureController 초기화');
-    print('🔑 카카오 API 키 상태: ${KakaoSubwayService.hasValidApiKey}');
+    print('🔑 서울시 지하철역 API 키 상태: ${SeoulSubwayService.hasValidApiKey}');
   }
   
   @override
@@ -254,9 +254,9 @@ class RouteDepartureController extends GetxController {
       isSubwaySearching.value = true;
       
       print('🚇 지하철역 검색 시작: $query');
-      print('🔑 API 키 상태: ${KakaoSubwayService.hasValidApiKey}');
+      print('🔑 API 키 상태: ${SeoulSubwayService.hasValidApiKey}');
       
-      final results = await KakaoSubwayService.searchSubwayStations(query);
+      final results = await SeoulSubwayService.searchSubwayStations(query);
       
       // 검색어가 변경되지 않았을 때만 결과 업데이트 (10개로 증가)
       if (subwaySearchController.text.trim() == query) {
@@ -268,7 +268,7 @@ class RouteDepartureController extends GetxController {
         // 디버깅: UI에 표시될 역 데이터 출력
         for (int i = 0; i < limitedResults.length; i++) {
           final station = limitedResults[i];
-          print('  UI ${i + 1}. 역명: ${station.stationName}, 주소: ${station.displayAddress}');
+          print('  UI ${i + 1}. 역명: ${station.displayName}, 호선: ${station.displayAddress}');
         }
       }
       
@@ -280,12 +280,12 @@ class RouteDepartureController extends GetxController {
     }
   }
   
-  void selectSubwayStation(SubwayStation station) {
+  void selectSubwayStation(SeoulSubwayStation station) {
     final locationData = LocationData(
       address: station.displayAddress,
-      placeName: station.stationName,
-      latitude: station.latitude,
-      longitude: station.longitude,
+      placeName: station.displayName,
+      latitude: null, // 서울시 API는 좌표 정보 없음
+      longitude: null,
       lastUsed: DateTime.now(),
     );
     

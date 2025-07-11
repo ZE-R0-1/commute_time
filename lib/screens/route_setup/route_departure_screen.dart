@@ -195,7 +195,7 @@ class _SubwayStationTab extends GetView<RouteDepartureController> {
                   return ListTile(
                     leading: const Icon(Icons.train, color: Colors.blue),
                     title: Text(
-                      station.stationName,
+                      station.displayName,
                       style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
                     subtitle: Text(
