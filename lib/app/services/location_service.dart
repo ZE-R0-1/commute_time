@@ -134,7 +134,7 @@ class LocationService {
         longitude: position.longitude,
         address: address ?? '현재 위치',
         accuracy: position.accuracy,
-        timestamp: position.timestamp ?? DateTime.now(),
+        timestamp: position.timestamp,
       );
 
     } catch (e) {
@@ -179,7 +179,7 @@ class LocationService {
           longitude: position.longitude,
           address: '현재 위치',
           accuracy: position.accuracy,
-          timestamp: position.timestamp ?? DateTime.now(),
+          timestamp: position.timestamp,
         );
       }
     } catch (e) {
@@ -259,21 +259,6 @@ class LocationService {
     );
   }
 
-  // 일반 오류 다이얼로그
-  static void _showLocationErrorDialog() {
-    Get.dialog(
-      AlertDialog(
-        title: const Text('위치 조회 실패'),
-        content: const Text('현재 위치를 조회할 수 없습니다.\n잠시 후 다시 시도해주세요.'),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('확인'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // 사용자 위치 모델

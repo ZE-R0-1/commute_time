@@ -7,7 +7,6 @@ import '../models/route_models.dart';
 /// 출발지-목적지 경로를 분석하여 경로상의 모든 교통수단 정보를 제공
 class RouteService {
   static String get _kakaoApiKey => dotenv.env['KAKAO_REST_API_KEY'] ?? '';
-  static String get _kakaoApiUrl => dotenv.env['KAKAO_API_URL'] ?? '';
 
   /// 출발지에서 목적지까지의 대중교통 경로 조회
   static Future<CommuteRoute?> getCommuteRoute({
@@ -86,7 +85,6 @@ class RouteService {
       
       for (final section in sections) {
         final guides = section['guides'] as List? ?? [];
-        final roads = section['roads'] as List? ?? [];
         
         // 각 구간의 교통수단 정보 추출
         for (final guide in guides) {

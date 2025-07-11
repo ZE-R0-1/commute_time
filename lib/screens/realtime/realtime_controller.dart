@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:geolocator/geolocator.dart';
 
 import '../../app/services/subway_service.dart';
 import '../../app/services/location_service.dart';
@@ -521,7 +520,6 @@ class RealtimeController extends GetxController with GetTickerProviderStateMixin
           direction = CommuteDirection.toHome;
           break;
         case CommuteType.none:
-        default:
           direction = CommuteDirection.flexible;
           break;
       }

@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../app/services/kakao_address_service.dart';
 
 class MapSelectionController extends GetxController {
@@ -60,7 +58,7 @@ class MapSelectionController extends GetxController {
   void onMapCreated(KakaoMapController controller) {
     mapController = controller;
     print('🗺️ 카카오맵 초기화 완료');
-    print('🔍 지도 컨트롤러 상태: ${controller != null ? "정상" : "오류"}');
+    print('🔍 지도 컨트롤러 상태: 정상');
   }
   
   

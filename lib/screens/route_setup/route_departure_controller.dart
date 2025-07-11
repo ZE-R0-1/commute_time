@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import '../../app/services/kakao_address_service.dart';
 import '../../app/services/seoul_subway_service.dart';
 import '../../app/services/location_service.dart';
 import '../onboarding/onboarding_controller.dart';

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
 
 class AnalysisController extends GetxController {
-  final GetStorage _storage = GetStorage();
 
   // 핵심 지표
   final RxString savedTime = '2시간 30분'.obs;

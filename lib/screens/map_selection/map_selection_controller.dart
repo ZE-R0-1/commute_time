@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../app/services/kakao_address_service.dart';
 import '../../app/services/location_service.dart';
 import '../onboarding/onboarding_controller.dart';
 

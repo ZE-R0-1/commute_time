@@ -1,16 +1,13 @@
 import 'package:http/http.dart' as http;
-import 'package:xml/xml.dart';
 import 'dart:convert';
 import 'dart:math';
-import 'package:get_storage/get_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:get_storage/get_storage.dart';
 import 'kakao_local_service.dart';
 
 class SubwayService {
   static String get _baseUrl => dotenv.env['SEOUL_SUBWAY_API_URL'] ?? 'http://swopenAPI.seoul.go.kr/api/subway';
   static String get _apiKey => dotenv.env['SEOUL_SUBWAY_API_KEY'] ?? '';
-  
-  static final GetStorage _storage = GetStorage();
 
   // 지하철 실시간 도착 정보 조회
   static Future<List<SubwayArrival>> getRealtimeArrival(String stationName) async {

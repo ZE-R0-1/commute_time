@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:xml/xml.dart';
@@ -13,7 +12,6 @@ class SimpleBusService {
   // 추가 API 엔드포인트들
   static String get _busRouteStationUrl => '$_busApiUrl/busRouteInfo/getStaionByRoute';
   static String get _stationRouteUrl => '$_busApiUrl/stationinfo/getRouteByStation';
-  static String get _stationSearchUrl => '$_busApiUrl/stationinfo/getStationByName';
 
   /// 1단계: 카카오 API로 근처 버스 정류장 찾기
   static Future<List<BusStation>> findNearestBusStations(

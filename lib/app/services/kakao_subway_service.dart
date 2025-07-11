@@ -165,61 +165,21 @@ class KakaoSubwayService {
       finalStations = relevantStations;
     }
     
-    // 각 역에 대한 점수 계산 및 정렬
+    // 검색어로 시작하는 역을 우선으로 정렬
     finalStations.sort((a, b) {
-      final scoreA = _calculateRelevanceScore(a.stationName.toLowerCase(), lowerQuery);
-      final scoreB = _calculateRelevanceScore(b.stationName.toLowerCase(), lowerQuery);
+      final aStartsWith = a.stationName.toLowerCase().startsWith(lowerQuery);
+      final bStartsWith = b.stationName.toLowerCase().startsWith(lowerQuery);
       
-      return scoreB.compareTo(scoreA); // 점수가 높은 순으로 정렬
+      if (aStartsWith && !bStartsWith) return -1;
+      if (!aStartsWith && bStartsWith) return 1;
+      
+      // 둘 다 같은 조건이면 이름순으로 정렬
+      return a.stationName.compareTo(b.stationName);
     });
     
     return finalStations;
   }
   
-  /// 검색어와의 일치도에 따라 결과 정렬 (기존 함수 유지)
-  static List<SubwayStation> _sortByRelevance(List<SubwayStation> stations, String query) {
-    // 검색어를 소문자로 변환
-    final lowerQuery = query.toLowerCase();
-    
-    // 각 역에 대한 점수 계산 및 정렬
-    stations.sort((a, b) {
-      final scoreA = _calculateRelevanceScore(a.stationName.toLowerCase(), lowerQuery);
-      final scoreB = _calculateRelevanceScore(b.stationName.toLowerCase(), lowerQuery);
-      
-      return scoreB.compareTo(scoreA); // 점수가 높은 순으로 정렬
-    });
-    
-    return stations;
-  }
-  
-  /// 검색어와 역명의 일치도 점수 계산
-  static int _calculateRelevanceScore(String stationName, String query) {
-    int score = 0;
-    
-    // 1. 정확히 시작하는 경우 (가장 높은 점수)
-    if (stationName.startsWith(query)) {
-      score += 1000;
-    }
-    
-    // 2. 포함하는 경우
-    if (stationName.contains(query)) {
-      score += 500;
-    }
-    
-    // 3. 공통 문자 개수에 따른 점수
-    int commonChars = 0;
-    for (int i = 0; i < query.length && i < stationName.length; i++) {
-      if (query[i] == stationName[i]) {
-        commonChars++;
-      }
-    }
-    score += commonChars * 100;
-    
-    // 4. 역명이 짧을수록 더 관련성이 높다고 판단
-    score += (20 - stationName.length).clamp(0, 20);
-    
-    return score;
-  }
 }
 
 /// 지하철역 데이터 모델

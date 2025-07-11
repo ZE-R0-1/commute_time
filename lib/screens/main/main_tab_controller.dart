@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../home/home_controller.dart';
-
 class MainTabController extends GetxController {
   // 현재 선택된 탭 인덱스
   final RxInt currentIndex = 0.obs;

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:xml/xml.dart';
@@ -249,32 +248,7 @@ class BusService {
     }
   }
 
-  /// 두 좌표 간의 거리를 계산 (미터 단위)
-  static double _calculateDistance(
-    double lat1,
-    double lon1,
-    double lat2,
-    double lon2,
-  ) {
-    const double earthRadius = 6371000; // 지구 반지름 (미터)
-    
-    final dLat = _toRadians(lat2 - lat1);
-    final dLon = _toRadians(lon2 - lon1);
-    
-    final a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(_toRadians(lat1)) *
-            cos(_toRadians(lat2)) *
-            sin(dLon / 2) *
-            sin(dLon / 2);
-    
-    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    
-    return earthRadius * c;
-  }
 
-  static double _toRadians(double degrees) {
-    return degrees * (pi / 180);
-  }
   
   static String _getRouteTypeFromCode(String code) {
     switch (code) {

@@ -212,7 +212,7 @@ class RouteTransferScreen extends GetView<RouteTransferController> {
                   final station = controller.subwaySearchResults[index];
                   
                   return ListTile(
-                    leading: Icon(
+                    leading: const Icon(
                       Icons.train,
                       color: Colors.blue,
                     ),

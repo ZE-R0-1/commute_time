@@ -432,26 +432,6 @@ class HomeController extends GetxController {
     }
   }
 
-  void _updateMorningData() {
-    recommendedDepartureTime.value = '8:15 출발 권장';
-    commuteRoute.value = '집 → 2호선 → 9호선 → 회사';
-    estimatedTime.value = '52분';
-    transportFee.value = '1,370원';
-  }
-
-  void _updateAfternoonData() {
-    recommendedDepartureTime.value = '이미 출근 시간 지남';
-    estimatedTime.value = '평균 45분';
-    recommendedOffTime.value = '6:10 퇴근 권장';
-    eveningSchedule.value = '7시 강남 약속 시간 고려';
-    bufferTime.value = '40분';
-  }
-
-  void _updateEveningData() {
-    recommendedDepartureTime.value = '내일 출근 준비';
-    recommendedOffTime.value = '퇴근 완료';
-    eveningSchedule.value = '수고하셨습니다!';
-  }
 
   // 경로 상세 화면 네비게이션
   void showCommuteRouteDetail() {

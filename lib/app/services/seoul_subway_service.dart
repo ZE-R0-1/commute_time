@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:xml/xml.dart';
 
 class SeoulSubwayService {
   static const String _baseUrl = 'http://openapi.seoul.go.kr:8088';
