@@ -3,141 +3,129 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import '../../app/services/kakao_address_service.dart';
+import '../../app/services/seoul_subway_service.dart';
 import '../onboarding/onboarding_controller.dart';
 
 class RouteTransferController extends GetxController {
   final TextEditingController searchController = TextEditingController();
+  final TextEditingController subwaySearchController = TextEditingController();
   final GetStorage _storage = GetStorage();
   
-  final RxList<String> searchResults = <String>[].obs;
-  final RxBool isSearching = false.obs;
-  Timer? _debounceTimer;
+  // 지하철역 검색
+  final RxList<SeoulSubwayStation> subwaySearchResults = <SeoulSubwayStation>[].obs;
+  final RxBool isSubwaySearching = false.obs;
+  Timer? _subwayDebounceTimer;
+  
   final RxList<TransferLocation> transferLocations = <TransferLocation>[].obs;
-  final RxList<TransferLocation> recentTransferLocations = <TransferLocation>[].obs;
   
   @override
   void onInit() {
     super.onInit();
-    _loadRecentTransferLocations();
+    
+    // 디버깅: API 키 상태 확인
+    print('🚇 RouteTransferController 초기화');
+    print('🔑 서울시 지하철역 API 키 상태: ${SeoulSubwayService.hasValidApiKey}');
+  }
+  
+  @override
+  void onReady() {
+    super.onReady();
+    // 지도 선택 결과 처리
+    _handleMapSelectionResult();
   }
   
   @override
   void onClose() {
-    _debounceTimer?.cancel();
+    _subwayDebounceTimer?.cancel();
     searchController.dispose();
+    subwaySearchController.dispose();
     super.onClose();
   }
   
-  void _loadRecentTransferLocations() {
-    final recentData = _storage.read('recent_transfer_locations') as List?;
-    if (recentData != null) {
-      recentTransferLocations.value = recentData.map((item) => TransferLocation(
-        id: item['id'] ?? '',
-        address: item['address'] ?? '',
-        placeName: item['placeName'],
-        latitude: item['latitude']?.toDouble(),
-        longitude: item['longitude']?.toDouble(),
-        lastUsed: DateTime.parse(item['lastUsed'] ?? DateTime.now().toIso8601String()),
-      )).toList();
-      
-      // 최근 사용 순으로 정렬
-      recentTransferLocations.sort((a, b) => b.lastUsed.compareTo(a.lastUsed));
-    }
-  }
-  
-  void onSearchChanged(String query) {
-    _debounceTimer?.cancel();
+  // 지하철역 검색 관련 메서드
+  void onSubwaySearchChanged(String query) {
+    _subwayDebounceTimer?.cancel();
     
-    if (query.length <= 1) {
-      searchResults.clear();
-      isSearching.value = false;
+    if (query.isEmpty) {
+      print('🧹 검색어 비어있음 - 결과 초기화');
+      subwaySearchResults.clear();
+      isSubwaySearching.value = false;
       return;
     }
     
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
-      if (query.length > 1) {
-        await _searchAddress(query);
+    print('⏱️ 검색 대기: $query');
+    
+    _subwayDebounceTimer = Timer(const Duration(milliseconds: 500), () async {
+      if (query.isNotEmpty) {
+        await _searchSubwayStations(query);
       }
     });
   }
   
-  Future<void> _searchAddress(String query) async {
+  Future<void> _searchSubwayStations(String query) async {
     try {
-      isSearching.value = true;
+      isSubwaySearching.value = true;
       
-      // OnboardingController의 searchAddress 메서드 사용
-      final onboardingController = Get.find<OnboardingController>();
-      final results = await onboardingController.searchAddress(query);
+      print('🚇 지하철역 검색 시작: $query');
+      print('🔑 API 키 상태: ${SeoulSubwayService.hasValidApiKey}');
+      
+      final results = await SeoulSubwayService.searchSubwayStations(query);
       
       // 검색어가 변경되지 않았을 때만 결과 업데이트 (10개로 증가)
-      if (searchController.text.trim() == query) {
-        searchResults.value = results.take(10).toList();
+      if (subwaySearchController.text.trim() == query) {
+        final limitedResults = results.take(10).toList();
+        subwaySearchResults.value = limitedResults;
+        
+        print('✅ 검색 결과 업데이트: 전체 ${results.length}개 → 표시 ${limitedResults.length}개');
+        
+        // 디버깅: UI에 표시될 역 데이터 출력
+        for (int i = 0; i < limitedResults.length; i++) {
+          final station = limitedResults[i];
+          print('  UI ${i + 1}. 역명: ${station.displayName}, 호선: ${station.displayAddress}');
+        }
       }
       
     } catch (e) {
-      print('역/정류장 검색 오류: $e');
-      searchResults.clear();
+      print('❌ 지하철역 검색 오류: $e');
+      subwaySearchResults.clear();
     } finally {
-      isSearching.value = false;
+      isSubwaySearching.value = false;
     }
   }
   
-  void addTransferLocation(String selectedAddress) async {
-    try {
-      // OnboardingController의 selectAddressFromSearch 메서드 사용
-      final onboardingController = Get.find<OnboardingController>();
-      await onboardingController.selectAddressFromSearch(
-        searchController.text.trim(),
-        selectedAddress,
-        false, // isHome - 환승지는 false
-      );
-      
-      final transferLocation = TransferLocation(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        address: selectedAddress,
-        placeName: null,
-        latitude: null,
-        longitude: null,
-        lastUsed: DateTime.now(),
-      );
-      
-      transferLocations.add(transferLocation);
-      _addToRecentTransferLocations(transferLocation);
-      
-      // 검색 결과 제거
-      searchResults.remove(selectedAddress);
-      searchController.clear();
-      
-      Get.snackbar(
-        '환승지 추가',
-        '$selectedAddress가 추가되었습니다.',
-        snackPosition: SnackPosition.TOP,
-        duration: const Duration(seconds: 2),
-      );
-    } catch (e) {
-      print('환승지 추가 오류: $e');
-    }
-  }
-  
-  void addRecentTransferLocation(TransferLocation location) {
-    final newLocation = TransferLocation(
+  void selectSubwayStation(SeoulSubwayStation station) {
+    final transferLocation = TransferLocation(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      address: location.address,
-      placeName: location.placeName,
-      latitude: location.latitude,
-      longitude: location.longitude,
+      address: station.displayAddress,
+      placeName: station.displayName,
+      latitude: null, // 서울시 API는 좌표 정보 없음
+      longitude: null,
       lastUsed: DateTime.now(),
     );
     
-    transferLocations.add(newLocation);
-    _addToRecentTransferLocations(newLocation);
+    transferLocations.add(transferLocation);
+    
+    // 검색 결과 초기화
+    subwaySearchResults.clear();
+    subwaySearchController.clear();
     
     Get.snackbar(
       '환승지 추가',
-      '${location.placeName ?? location.address}가 추가되었습니다.',
+      '${station.displayName}이 추가되었습니다.',
       snackPosition: SnackPosition.TOP,
       duration: const Duration(seconds: 2),
     );
+  }
+  
+  void selectFromMap() async {
+    final result = await Get.toNamed('/map-selection', arguments: {
+      'type': 'transfer',
+      'title': '환승지 선택 (버스정류장)',
+    });
+    
+    if (result != null) {
+      _handleMapSelectionResult(result);
+    }
   }
   
   void removeTransferLocation(TransferLocation location) {
@@ -167,12 +155,49 @@ class RouteTransferController extends GetxController {
     );
   }
   
-  void addFromMap() {
-    Get.toNamed('/map-selection', arguments: {
-      'type': 'transfer',
-      'title': '환승지 선택',
-      'multiSelect': true,
-    });
+  void _handleMapSelectionResult([dynamic result]) {
+    if (result == null) return;
+    
+    try {
+      final Map<String, dynamic> mapResult = result as Map<String, dynamic>;
+      
+      final transferLocation = TransferLocation(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        address: mapResult['address'] ?? '',
+        placeName: mapResult['placeName'],
+        latitude: mapResult['latitude']?.toDouble(),
+        longitude: mapResult['longitude']?.toDouble(),
+        lastUsed: DateTime.now(),
+      );
+      
+      // 중복 체크
+      if (!transferLocations.any((location) => 
+          location.address == transferLocation.address ||
+          (location.latitude != null && location.longitude != null &&
+           transferLocation.latitude != null && transferLocation.longitude != null &&
+           (location.latitude! - transferLocation.latitude!).abs() < 0.001 &&
+           (location.longitude! - transferLocation.longitude!).abs() < 0.001))) {
+        
+        transferLocations.add(transferLocation);
+        
+        Get.snackbar(
+          '환승지 추가',
+          '${transferLocation.placeName ?? transferLocation.address}가 추가되었습니다.',
+          snackPosition: SnackPosition.TOP,
+          duration: const Duration(seconds: 2),
+        );
+      } else {
+        Get.snackbar(
+          '중복 위치',
+          '이미 선택된 환승지입니다.',
+          snackPosition: SnackPosition.TOP,
+          duration: const Duration(seconds: 2),
+        );
+      }
+      
+    } catch (e) {
+      print('지도 선택 결과 처리 오류: $e');
+    }
   }
   
   bool isLocationSelected(String selectedAddress) {
@@ -181,35 +206,6 @@ class RouteTransferController extends GetxController {
   
   bool isLocationSelectedByAddress(String address) {
     return transferLocations.any((location) => location.address == address);
-  }
-  
-  void _addToRecentTransferLocations(TransferLocation location) {
-    // 중복 제거
-    recentTransferLocations.removeWhere((item) => item.address == location.address);
-    
-    // 새 위치를 맨 앞에 추가
-    recentTransferLocations.insert(0, location);
-    
-    // 최대 10개까지만 유지
-    if (recentTransferLocations.length > 10) {
-      recentTransferLocations.removeRange(10, recentTransferLocations.length);
-    }
-    
-    // 저장
-    _saveRecentTransferLocations();
-  }
-  
-  void _saveRecentTransferLocations() {
-    final recentData = recentTransferLocations.map((location) => {
-      'id': location.id,
-      'address': location.address,
-      'placeName': location.placeName,
-      'latitude': location.latitude,
-      'longitude': location.longitude,
-      'lastUsed': location.lastUsed.toIso8601String(),
-    }).toList();
-    
-    _storage.write('recent_transfer_locations', recentData);
   }
 }
 

@@ -47,14 +47,9 @@ class RouteTransferScreen extends GetView<RouteTransferController> {
             _buildHeader(),
             _buildSearchSection(),
             _buildSelectedTransfers(),
-            _buildRecentSection(),
+            _buildMapSection(),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: controller.addFromMap,
-        backgroundColor: Colors.orange,
-        child: const Icon(Icons.add_location_alt, color: Colors.white),
       ),
     );
   }
@@ -143,8 +138,17 @@ class RouteTransferScreen extends GetView<RouteTransferController> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 검색 입력 필드
+          Text(
+            '🚇 지하철역 검색',
+            style: Get.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          // 지하철역 검색 입력 필드
           Container(
             decoration: BoxDecoration(
               color: Colors.grey[50],
@@ -152,12 +156,12 @@ class RouteTransferScreen extends GetView<RouteTransferController> {
               border: Border.all(color: Colors.grey[200]!),
             ),
             child: TextField(
-              controller: controller.searchController,
-              onChanged: controller.onSearchChanged,
+              controller: controller.subwaySearchController,
+              onChanged: controller.onSubwaySearchChanged,
               decoration: InputDecoration(
-                hintText: '정류장이나 역 이름으로 검색',
+                hintText: '지하철역 이름으로 검색',
                 hintStyle: TextStyle(color: Colors.grey[500]),
-                prefixIcon: Icon(Icons.search, color: Colors.grey[500]),
+                prefixIcon: Icon(Icons.train, color: Colors.grey[500]),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -169,9 +173,9 @@ class RouteTransferScreen extends GetView<RouteTransferController> {
           
           const SizedBox(height: 16),
           
-          // 검색 결과
+          // 지하철역 검색 결과
           Obx(() {
-            if (controller.isSearching.value) {
+            if (controller.isSubwaySearching.value) {
               return Container(
                 padding: const EdgeInsets.all(20),
                 child: const Center(
@@ -180,7 +184,7 @@ class RouteTransferScreen extends GetView<RouteTransferController> {
               );
             }
             
-            if (controller.searchResults.isEmpty) {
+            if (controller.subwaySearchResults.isEmpty) {
               return const SizedBox.shrink();
             }
             
@@ -199,31 +203,31 @@ class RouteTransferScreen extends GetView<RouteTransferController> {
               child: ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: controller.searchResults.length,
+                itemCount: controller.subwaySearchResults.length,
                 separatorBuilder: (context, index) => Divider(
                   height: 1,
                   color: Colors.grey[200],
                 ),
                 itemBuilder: (context, index) {
-                  final result = controller.searchResults[index];
-                  final isSelected = controller.isLocationSelected(result);
+                  final station = controller.subwaySearchResults[index];
                   
                   return ListTile(
                     leading: Icon(
-                      isSelected ? Icons.check_circle : Icons.location_on,
-                      color: isSelected ? Colors.green : Colors.grey,
+                      Icons.train,
+                      color: Colors.blue,
                     ),
                     title: Text(
-                      result,
-                      style: TextStyle(
+                      station.displayName,
+                      style: const TextStyle(
                         fontWeight: FontWeight.w500,
-                        color: isSelected ? Colors.grey : Colors.black,
                       ),
                     ),
-                    trailing: isSelected
-                        ? const Icon(Icons.check, color: Colors.green)
-                        : const Icon(Icons.add, color: Colors.grey),
-                    onTap: isSelected ? null : () => controller.addTransferLocation(result),
+                    subtitle: Text(
+                      station.displayAddress,
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                    trailing: const Icon(Icons.add, color: Colors.grey),
+                    onTap: () => controller.selectSubwayStation(station),
                   );
                 },
               ),
@@ -355,118 +359,74 @@ class RouteTransferScreen extends GetView<RouteTransferController> {
     );
   }
   
-  Widget _buildRecentSection() {
+  Widget _buildMapSection() {
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SizedBox(height: 24),
+            
             Text(
-              '최근 환승지',
+              '🚌 버스정류장 선택',
               style: Get.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             
-            Expanded(
-              child: Obx(() {
-                if (controller.recentTransferLocations.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.transfer_within_a_station,
-                          size: 64,
-                          color: Colors.grey[300],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          '최근 사용한 환승지가 없습니다',
-                          style: TextStyle(
-                            color: Colors.grey[500],
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                
-                return ListView.separated(
-                  itemCount: controller.recentTransferLocations.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final location = controller.recentTransferLocations[index];
-                    final isSelected = controller.isLocationSelectedByAddress(location.address);
-                    
-                    return _buildRecentLocationCard(location, isSelected);
-                  },
-                );
-              }),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildRecentLocationCard(TransferLocation location, bool isSelected) {
-    return GestureDetector(
-      onTap: isSelected ? null : () => controller.addRecentTransferLocation(location),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.grey[50] : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? Colors.green : Colors.grey[200]!,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              isSelected ? Icons.check_circle : Icons.transfer_within_a_station,
-              color: isSelected ? Colors.green : Colors.grey[500],
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    location.placeName ?? location.address,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 16,
-                      color: isSelected ? Colors.grey : Colors.black,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (location.placeName != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      location.address,
-                      style: TextStyle(
-                        color: isSelected ? Colors.grey : Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
+            Text(
+              '지도에서 버스정류장을 직접 선택하세요',
+              style: Get.textTheme.bodyMedium?.copyWith(
+                color: Colors.grey[600],
               ),
             ),
-            if (isSelected)
-              const Icon(Icons.check, color: Colors.green)
-            else
-              const Icon(Icons.add, color: Colors.grey),
+            const SizedBox(height: 16),
+            
+            // 지도 선택 버튼
+            GestureDetector(
+              onTap: controller.selectFromMap,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.orange.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.map,
+                      color: Colors.orange[700],
+                      size: 48,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '지도에서 버스정류장 선택하기',
+                      style: TextStyle(
+                        color: Colors.orange[700],
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '지도를 터치하여 버스정류장 위치 선택',
+                      style: TextStyle(
+                        color: Colors.orange[600],
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 24),
           ],
         ),
       ),

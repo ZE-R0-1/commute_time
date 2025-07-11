@@ -87,8 +87,7 @@ class BusService {
         print('HTTP 오류: ${response.statusCode}');
         throw Exception('HTTP 오류: ${response.statusCode}');
       }
-      
-      throw Exception('버스 정류장 조회 실패');
+
     } catch (e) {
       print('버스 정류장 조회 오류: $e');
       return [];
@@ -180,8 +179,7 @@ class BusService {
         print('HTTP 오류: ${response.statusCode}');
         throw Exception('HTTP 오류: ${response.statusCode}');
       }
-      
-      throw Exception('버스 도착 정보 조회 실패');
+
     } catch (e) {
       print('버스 도착 정보 조회 오류: $e');
       return [];

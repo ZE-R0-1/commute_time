@@ -16,8 +16,8 @@ import '../../screens/route_setup/route_transfer_screen.dart';
 import '../../screens/route_setup/route_transfer_binding.dart';
 import '../../screens/route_setup/route_arrival_screen.dart';
 import '../../screens/route_setup/route_arrival_binding.dart';
-import '../../screens/map_selection/map_selection_screen.dart';
-import '../../screens/map_selection/map_selection_binding.dart';
+import '../../screens/map/map_selection_screen.dart';
+import '../../screens/map/map_selection_binding.dart';
 
 part 'app_routes.dart';
 

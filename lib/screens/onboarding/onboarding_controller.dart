@@ -96,7 +96,7 @@ class OnboardingController extends GetxController {
       case 4: // 근무 시간
         return workStartTime.value != null && workEndTime.value != null;
       case 5: // 경로 설정
-        return routeSetupCompleted.value;
+        return selectedDeparture.value.isNotEmpty && selectedArrival.value.isNotEmpty;
       default:
         return false;
     }

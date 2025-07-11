@@ -25,10 +25,41 @@ class StepRouteSetup extends GetView<OnboardingController> {
           
           // 설명
           Text(
-            '출발역/정류장, 환승지, 도착역/정류장을\n순서대로 설정하여 최적의 경로를 만들어보세요.',
+            '출발지와 도착지를 필수로 설정해주세요.\n환승지는 선택사항입니다.',
             style: Get.textTheme.bodyLarge?.copyWith(
               color: Colors.grey[600],
               height: 1.4,
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // 필수/선택 안내
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  color: Colors.orange[700],
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '출발지와 도착지는 필수입니다. 환승지는 나중에 추가할 수 있습니다.',
+                    style: TextStyle(
+                      color: Colors.orange[700],
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           
@@ -41,7 +72,7 @@ class StepRouteSetup extends GetView<OnboardingController> {
                 children: [
                   Obx(() => _buildRouteCard(
                     icon: Icons.home,
-                    title: '출발지',
+                    title: '출발지 (필수)',
                     subtitle: controller.selectedDeparture.value.isNotEmpty
                         ? controller.selectedDeparture.value
                         : '출발하는 역 또는 정류장',
@@ -54,12 +85,12 @@ class StepRouteSetup extends GetView<OnboardingController> {
                   
                   Obx(() => _buildRouteCard(
                     icon: Icons.swap_horiz,
-                    title: '환승지',
+                    title: '환승지 (선택)',
                     subtitle: controller.selectedTransfers.isNotEmpty
                         ? controller.selectedTransfers.length == 1
                             ? controller.selectedTransfers.first
                             : '${controller.selectedTransfers.first} 외 ${controller.selectedTransfers.length - 1}개'
-                        : '경유하는 정류장/역 (선택)',
+                        : '경유하는 정류장/역 (선택사항)',
                     color: Colors.orange,
                     isSelected: controller.selectedTransfers.isNotEmpty,
                     onTap: () => _showRouteSelection(RouteType.transfer),
@@ -69,7 +100,7 @@ class StepRouteSetup extends GetView<OnboardingController> {
                   
                   Obx(() => _buildRouteCard(
                     icon: Icons.business,
-                    title: '도착지',
+                    title: '도착지 (필수)',
                     subtitle: controller.selectedArrival.value.isNotEmpty
                         ? controller.selectedArrival.value
                         : '도착하는 역 또는 정류장',
@@ -233,17 +264,24 @@ class StepRouteSetup extends GetView<OnboardingController> {
   }
   
   void _checkRouteCompletion() {
-    // 경로 설정이 완료되었는지 확인하고 상태 업데이트
-    // 실제로는 선택된 경로 데이터를 확인해야 하지만,
-    // 여기서는 간단히 하나라도 선택되면 완료로 처리
-    controller.routeSetupCompleted.value = true;
+    // 출발지와 도착지가 모두 선택되었는지 확인
+    final hasDepature = controller.selectedDeparture.value.isNotEmpty;
+    final hasArrival = controller.selectedArrival.value.isNotEmpty;
     
-    Get.snackbar(
-      '경로 설정 완료',
-      '출퇴근 경로가 설정되었습니다.',
-      snackPosition: SnackPosition.TOP,
-      duration: const Duration(seconds: 2),
-    );
+    if (hasDepature && hasArrival) {
+      controller.routeSetupCompleted.value = true;
+      
+      Get.snackbar(
+        '필수 경로 설정 완료',
+        '출발지와 도착지가 설정되었습니다! 이제 온보딩을 완료할 수 있습니다.',
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 2),
+        backgroundColor: Colors.green.withValues(alpha: 0.1),
+        colorText: Colors.green[700],
+      );
+    } else {
+      controller.routeSetupCompleted.value = false;
+    }
   }
 }
 

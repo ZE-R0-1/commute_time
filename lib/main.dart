@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 
 import 'app/routes/app_pages.dart';
 import 'app/theme/app_theme.dart';
@@ -18,6 +19,16 @@ void main() async {
   } catch (e) {
     print('환경변수 로드 실패: $e');
     print('기본값으로 진행합니다.');
+  }
+
+  // 카카오맵 WebView 플러그인 초기화
+  try {
+    AuthRepository.initialize(
+      appKey: dotenv.env['KAKAO_JAVASCRIPT_KEY'] ?? dotenv.env['KAKAO_REST_API_KEY'] ?? '',
+    );
+    print('카카오맵 초기화 완료');
+  } catch (e) {
+    print('카카오맵 초기화 실패: $e');
   }
 
   // 로컬 저장소 초기화
