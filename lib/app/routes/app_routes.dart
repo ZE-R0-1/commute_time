@@ -15,6 +15,7 @@ abstract class Routes {
   static const profile = '/profile';
   
   // 경로 설정 화면들
+  static const routeSetup = '/route-setup';
   static const routeDeparture = '/route-departure';
   static const routeTransfer = '/route-transfer';
   static const routeArrival = '/route-arrival';

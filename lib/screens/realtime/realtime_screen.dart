@@ -15,9 +15,6 @@ class RealtimeScreen extends GetView<RealtimeController> {
           onRefresh: controller.refresh,
           child: Column(
             children: [
-              // 현재 상태 정보
-              _buildStatusCard(),
-              
               // 탭 구조
               _buildTransportTabs(),
               
@@ -32,155 +29,6 @@ class RealtimeScreen extends GetView<RealtimeController> {
     );
   }
 
-  // 현재 상태 정보 카드
-  Widget _buildStatusCard() {
-    return Obx(() => Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Obx(() => Text(
-                controller.currentTimeText,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              )),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _getCommuteTypeColor().withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  controller.commuteTypeText,
-                  style: TextStyle(
-                    color: _getCommuteTypeColor(),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(
-                Icons.location_on,
-                size: 16,
-                color: Colors.grey[600],
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Obx(() {
-                  if (controller.currentAddress.value == '위치를 확인하는 중...') {
-                    return Row(
-                      children: [
-                        SizedBox(
-                          width: 12,
-                          height: 12,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '위치를 확인하는 중...',
-                          style: TextStyle(
-                            color: Colors.blue[600],
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    );
-                  }
-                  return Text(
-                    controller.currentAddress.value.isEmpty 
-                        ? '위치 정보 없음' 
-                        : controller.currentAddress.value,
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 14,
-                    ),
-                  );
-                }),
-              ),
-              // 모드 토글 버튼
-              Obx(() => IconButton(
-                onPressed: controller.toggleRouteMode,
-                icon: Icon(
-                  controller.useRouteMode.value 
-                      ? Icons.route 
-                      : Icons.location_on,
-                  size: 18,
-                  color: controller.useRouteMode.value 
-                      ? Colors.green[600] 
-                      : Colors.blue[600],
-                ),
-                constraints: const BoxConstraints(
-                  minWidth: 24,
-                  minHeight: 24,
-                ),
-                padding: EdgeInsets.zero,
-                tooltip: controller.useRouteMode.value 
-                    ? '경로 기반 모드 (탭하여 현재 위치 모드로 전환)'
-                    : '현재 위치 모드 (탭하여 경로 기반 모드로 전환)',
-              )),
-              // 위치 새로고침 버튼
-              IconButton(
-                onPressed: controller.refreshLocation,
-                icon: Icon(
-                  Icons.my_location,
-                  size: 18,
-                  color: Colors.blue[600],
-                ),
-                constraints: const BoxConstraints(
-                  minWidth: 24,
-                  minHeight: 24,
-                ),
-                padding: EdgeInsets.zero,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(
-                Icons.arrow_forward,
-                size: 16,
-                color: Colors.grey[600],
-              ),
-              const SizedBox(width: 4),
-              Obx(() => Text(
-                controller.commuteDirectionText,
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 14,
-                ),
-              )),
-            ],
-          ),
-        ],
-      ),
-    ));
-  }
 
   // 지하철 실시간 정보
   Widget _buildSubwayInfo() {
@@ -490,17 +338,6 @@ class RealtimeScreen extends GetView<RealtimeController> {
   }
 
 
-  // 출퇴근 시간대 색상
-  Color _getCommuteTypeColor() {
-    switch (controller.commuteType.value) {
-      case CommuteType.toWork:
-        return Colors.blue;
-      case CommuteType.toHome:
-        return Colors.green;
-      case CommuteType.none:
-        return Colors.grey;
-    }
-  }
 
   // 지하철 호선 색상 (수도권 전체)
   Color _getLineColor(String subwayId) {

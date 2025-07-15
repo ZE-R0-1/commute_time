@@ -10,6 +10,7 @@ import '../../screens/main/main_tab_screen.dart';
 import '../../screens/main/main_tab_binding.dart';
 import '../../screens/route_detail/route_detail_screen.dart';
 import '../../screens/route_detail/route_detail_binding.dart';
+import '../../screens/route_setup/route_setup_screen.dart';
 import '../../screens/route_setup/route_departure_screen.dart';
 import '../../screens/route_setup/route_departure_binding.dart';
 import '../../screens/route_setup/route_transfer_screen.dart';
@@ -65,6 +66,12 @@ class AppPages {
     ),
 
     // 경로 설정 화면들
+    GetPage(
+      name: Routes.routeSetup,
+      page: () => const RouteSetupScreen(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 300),
+    ),
     GetPage(
       name: Routes.routeDeparture,
       page: () => const RouteDepartureScreen(),
