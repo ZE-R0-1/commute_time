@@ -1,104 +1,254 @@
-// lib/screens/onboarding/onboarding_screen.dart (AnimatedSwitcher 제거)
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import 'onboarding_controller.dart';
-import 'widgets/step_welcome.dart';
-import 'widgets/step_location_permission.dart';
-import 'widgets/step_home_address.dart';
-import 'widgets/step_work_address.dart';
-import 'widgets/step_work_time.dart';
-import 'widgets/step_route_setup.dart';
+import 'widgets/step_route_setup_new.dart';
 
 class OnboardingScreen extends GetView<OnboardingController> {
   const OnboardingScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    return Obx(() {
+      switch (controller.currentStep.value) {
+        case 0:
+          return _buildWelcomeScreen();
+        case 1:
+          return const StepRouteSetupNew();
+        default:
+          return _buildWelcomeScreen();
+      }
+    });
+  }
+
+  Widget _buildWelcomeScreen() {
     return Scaffold(
-      backgroundColor: Get.theme.scaffoldBackgroundColor,
-      resizeToAvoidBottomInset: true, // 🆕 키보드 처리 개선
-      body: SafeArea(
-        child: Obx(() => Column(
-          children: [
-            // 상단 진행률 표시
-            _buildProgressHeader(),
-
-            // 🆕 메인 콘텐츠 영역 (Flexible로 변경하여 키보드 공간 확보)
-            Flexible(
-              child: _buildStepContent(),
-            ),
-
-            // 하단 네비게이션 버튼 (키보드와 상관없이 하단 고정)
-            _buildNavigationButtons(),
-          ],
-        )),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFE3F2FD), // 연한 파란색
+              Color(0xFFE8EAF6), // 연한 인디고색
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // 헤더 영역
+              Expanded(
+                flex: 3,
+                child: _buildHeader(),
+              ),
+              
+              // 기능 소개 카드들
+              Expanded(
+                flex: 4,
+                child: _buildFeatureCards(),
+              ),
+              
+              // 하단 영역
+              Expanded(
+                flex: 2,
+                child: _buildBottomSection(),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  // 진행률 헤더
-  Widget _buildProgressHeader() {
-    return Container(
-      padding: const EdgeInsets.all(24),
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // 진행률 바
-          Row(
-            children: [
-              Text(
-                '${controller.currentStep.value + 1}',
-                style: Get.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Get.theme.primaryColor,
-                ),
-              ),
-              Text(
-                ' / ${controller.totalSteps}',
-                style: Get.textTheme.headlineSmall?.copyWith(
-                  color: Colors.grey[400],
-                ),
-              ),
-              const Spacer(),
-              // 항상 같은 크기의 영역을 유지하되, 첫 번째 단계에서는 투명하게
-              Opacity(
-                opacity: controller.currentStep.value > 0 ? 1.0 : 0.0,
-                child: TextButton(
-                  onPressed: controller.currentStep.value > 0
-                      ? controller.previousStep
-                      : null,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.arrow_back_ios,
-                        size: 16,
-                        color: Colors.grey[600],
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '이전',
-                        style: TextStyle(color: Colors.grey[600]),
+          // 앱 아이콘
+          TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 1000),
+            tween: Tween(begin: 0.0, end: 1.0),
+            builder: (context, value, child) {
+              return Transform.scale(
+                scale: 0.7 + (0.3 * value),
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFF2196F3), // 파란색
+                        Color(0xFF3F51B5), // 인디고색
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF2196F3).withOpacity(0.3),
+                        blurRadius: 16,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
+                  child: const Icon(
+                    Icons.location_on,
+                    size: 40,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-            ],
+              );
+            },
           ),
+          
+          const SizedBox(height: 24),
+          
+          // 앱 제목
+          Text(
+            '출퇴근 도우미',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
+              letterSpacing: -0.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          
+          const SizedBox(height: 8),
+          
+          // 부제목
+          Text(
+            '스마트한 출퇴근을 위한 실시간 정보',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey[600],
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
 
+  Widget _buildFeatureCards() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        children: [
+          // 첫 번째 카드: 실시간 교통정보
+          TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 600),
+            tween: Tween(begin: 0.0, end: 1.0),
+            builder: (context, value, child) {
+              return Transform.translate(
+                offset: Offset(0, 30 * (1 - value)),
+                child: Opacity(
+                  opacity: value,
+                  child: _buildFeatureCard(
+                    icon: Icons.access_time,
+                    iconColor: const Color(0xFF2196F3),
+                    title: '실시간 교통정보',
+                    description: '지하철, 버스, 도로 상황을 한눈에',
+                  ),
+                ),
+              );
+            },
+          ),
+          
           const SizedBox(height: 16),
+          
+          // 두 번째 카드: 스마트 알림
+          TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 800),
+            tween: Tween(begin: 0.0, end: 1.0),
+            builder: (context, value, child) {
+              return Transform.translate(
+                offset: Offset(0, 30 * (1 - value)),
+                child: Opacity(
+                  opacity: value,
+                  child: _buildFeatureCard(
+                    icon: Icons.notifications,
+                    iconColor: const Color(0xFF4CAF50),
+                    title: '스마트 알림',
+                    description: '출발 시간을 미리 알려드려요',
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
-          // 진행률 인디케이터
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: controller.progress,
-              backgroundColor: Colors.grey[200],
-              valueColor: AlwaysStoppedAnimation<Color>(
-                Get.theme.primaryColor,
-              ),
-              minHeight: 6,
+  Widget _buildFeatureCard({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String description,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.8),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // 아이콘
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: iconColor,
+              size: 24,
+            ),
+          ),
+          
+          const SizedBox(width: 16),
+          
+          // 텍스트 내용
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                    height: 1.3,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -106,166 +256,89 @@ class OnboardingScreen extends GetView<OnboardingController> {
     );
   }
 
-  // 🆕 단계별 콘텐츠 (AnimatedSwitcher 제거)
-  Widget _buildStepContent() {
-    // 애니메이션 없이 바로 위젯 반환
-    return _getCurrentStepWidget();
-  }
-
-  // 현재 단계의 위젯 반환
-  Widget _getCurrentStepWidget() {
-    switch (controller.currentStep.value) {
-      case 0:
-        return const StepWelcome(key: ValueKey('welcome'));
-      case 1:
-        return const StepLocationPermission(key: ValueKey('location'));
-      case 2:
-        return const StepHomeAddress(key: ValueKey('home'));
-      case 3:
-        return const StepWorkAddress(key: ValueKey('work'));
-      case 4:
-        return const StepWorkTime(key: ValueKey('time'));
-      case 5:
-        return const StepRouteSetup(key: ValueKey('route'));
-      default:
-        return const StepWelcome(key: ValueKey('default'));
-    }
-  }
-
-  // 네비게이션 버튼
-  Widget _buildNavigationButtons() {
-    return Container(
-      padding: const EdgeInsets.all(24),
+  Widget _buildBottomSection() {
+    return Padding(
+      padding: const EdgeInsets.all(32),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          // 메인 버튼 (다음 or 완료)
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: controller.canProceed ? () async {
-                if (controller.currentStep.value == controller.totalSteps - 1) {
-                  // 마지막 단계 - 완료
-                  controller.nextStep();
-                } else {
-                  // 각 단계별 특별 처리 로직 추가
-                  await _handleStepAction();
-                }
-              } : () async {
-                // canProceed가 false인 경우에도 위치 권한 단계에서는 권한 요청 실행
-                if (controller.currentStep.value == 1) {
-                  await controller.requestLocationPermission();
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Get.theme.primaryColor,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                disabledBackgroundColor: Colors.grey[300],
-              ),
-              child: Obx(() => controller.isLoading.value
-                  ? Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    '설정 저장 중...',
-                    style: Get.textTheme.bodyLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              )
-                  : Text(
-                _getButtonText(),
-                style: Get.textTheme.bodyLarge?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              )
-              ),
-            ),
-          ),
-
-          // 건너뛰기 버튼 (위치 권한 단계이면서 권한이 허용되지 않았을 때만)
-          Obx(() {
-            if (controller.currentStep.value == 1 &&
-                !controller.locationPermissionGranted.value) {
-              return Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: TextButton(
-                  onPressed: () {
-                    controller.locationPermissionGranted.value = true;
-                    controller.nextStep();
-                  },
-                  child: Text(
-                    '나중에 설정하기',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 14,
+          // 시작하기 버튼
+          TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 1200),
+            tween: Tween(begin: 0.0, end: 1.0),
+            builder: (context, value, child) {
+              return Transform.scale(
+                scale: 0.9 + (0.1 * value),
+                child: Opacity(
+                  opacity: value,
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        controller.nextStep();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [
+                              Color(0xFF2196F3), // 파란색
+                              Color(0xFF3F51B5), // 인디고색
+                            ],
+                          ),
+                          borderRadius: BorderRadius.all(Radius.circular(16)),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            '시작하기',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
               );
-            }
-            return const SizedBox.shrink(); // 조건에 맞지 않으면 빈 위젯 반환
-          }),
+            },
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // 설명 텍스트
+          TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 1400),
+            tween: Tween(begin: 0.0, end: 1.0),
+            builder: (context, value, child) {
+              return Opacity(
+                opacity: value,
+                child: Text(
+                  '무료로 시작하고 언제든 설정을 변경할 수 있어요',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
-  }
-
-  // 각 단계별 액션 처리 메서드
-  Future<void> _handleStepAction() async {
-    switch (controller.currentStep.value) {
-      case 1: // 위치 권한 단계
-        if (!controller.locationPermissionGranted.value) {
-          // 위치 권한이 아직 허용되지 않았으면 권한 요청
-          await controller.requestLocationPermission();
-        } else {
-          // 이미 권한이 허용되었으면 다음 단계로
-          controller.nextStep();
-        }
-        break;
-
-      default:
-      // 다른 단계들은 기본적으로 다음 단계로 이동
-        controller.nextStep();
-        break;
-    }
-  }
-
-  // 버튼 텍스트 결정 (실제 GPS 상태 반영)
-  String _getButtonText() {
-    if (controller.currentStep.value == controller.totalSteps - 1) {
-      return '설정 완료 🎉';
-    }
-
-    switch (controller.currentStep.value) {
-      case 0:
-        return '시작하기';
-      case 1:
-        if (controller.isLocationLoading.value) {
-          return '위치 확인 중...';
-        } else if (controller.locationPermissionGranted.value) {
-          return '다음 단계';
-        } else {
-          return '📍 위치 권한 허용';
-        }
-      default:
-        return '다음 단계';
-    }
   }
 }

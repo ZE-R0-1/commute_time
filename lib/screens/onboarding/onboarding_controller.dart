@@ -15,7 +15,7 @@ class OnboardingController extends GetxController {
   final RxInt currentStep = 0.obs;
 
   // 총 단계 수
-  final int totalSteps = 6;
+  final int totalSteps = 2; // 임시로 2단계만 (환영 화면 + 경로 설정)
 
   // 각 단계별 완료 상태
   final RxList<bool> stepCompleted = <bool>[].obs;
@@ -87,15 +87,7 @@ class OnboardingController extends GetxController {
     switch (currentStep.value) {
       case 0: // 환영 화면
         return true;
-      case 1: // 위치 권한
-        return locationPermissionGranted.value;
-      case 2: // 집 주소
-        return homeAddress.value.isNotEmpty;
-      case 3: // 회사 주소
-        return workAddress.value.isNotEmpty;
-      case 4: // 근무 시간
-        return workStartTime.value != null && workEndTime.value != null;
-      case 5: // 경로 설정
+      case 1: // 경로 설정
         return selectedDeparture.value.isNotEmpty && selectedArrival.value.isNotEmpty;
       default:
         return false;
