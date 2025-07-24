@@ -19,6 +19,8 @@ import '../../screens/route_setup/route_arrival_screen.dart';
 import '../../screens/route_setup/route_arrival_binding.dart';
 import '../../screens/map/map_selection_screen.dart';
 import '../../screens/map/map_selection_binding.dart';
+import '../../screens/location_search/location_search_screen.dart';
+import '../../screens/location_search/location_search_binding.dart';
 
 part 'app_routes.dart';
 
@@ -100,6 +102,15 @@ class AppPages {
       page: () => const MapSelectionScreen(),
       binding: MapSelectionBinding(),
       transition: Transition.native,
+      transitionDuration: const Duration(milliseconds: 300),
+    ),
+
+    // 위치 검색 화면
+    GetPage(
+      name: Routes.locationSearch,
+      page: () => const LocationSearchScreen(),
+      binding: LocationSearchBinding(),
+      transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 300),
     ),
   ];

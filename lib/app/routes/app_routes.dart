@@ -20,4 +20,5 @@ abstract class Routes {
   static const routeTransfer = '/route-transfer';
   static const routeArrival = '/route-arrival';
   static const mapSelection = '/map-selection';
+  static const locationSearch = '/location-search';
 }

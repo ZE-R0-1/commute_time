@@ -102,21 +102,31 @@ class StepRouteSetupNew extends GetView<OnboardingController> {
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
-                        // 출발지 설정
-                        Obx(() => _buildLocationSection(
-                          title: '출발지',
-                          subtitle: '집 근처 지하철역 또는 버스정류장',
-                          icon: Icons.home,
-                          color: const Color(0xFF3B82F6), // 파란색
-                          selectedLocation: selectedDeparture.value,
-                          placeholder: '예: 강남역, 강남역.강남구청',
-                          onTap: () {
-                            editingMode.value = 'departure';
-                            searchController.clear();
-                            searchResults.clear();
+                        // 출발지 설정 / 환승지 추가 버튼
+                        _buildAddTransferButton(
+                          onTap: () async {
+                            // 첫 번째는 출발지 설정, 그 이후는 환승지 추가
+                            String mode = transferStations.length == 0 ? 'departure' : 'transfer';
+                            final result = await Get.toNamed('/location-search', arguments: {
+                              'mode': mode,
+                              'title': transferStations.length == 0 ? '출발지 설정' : '환승지 추가'
+                            });
+                            
+                            if (result != null) {
+                              if (mode == 'departure') {
+                                selectedDeparture.value = result['name'];
+                              } else {
+                                transferStations.add(LocationInfo(
+                                  name: result['name'],
+                                  type: result['type'] ?? 'subway',
+                                  lineInfo: result['lineInfo'] ?? '',
+                                  code: result['code'] ?? '',
+                                ));
+                              }
+                            }
                           },
-                          onClear: () => selectedDeparture.value = null,
-                        )),
+                          count: transferStations.length,
+                        ),
 
                         const SizedBox(height: 16),
 
@@ -141,17 +151,26 @@ class StepRouteSetupNew extends GetView<OnboardingController> {
                           );
                         }),
 
-                        // 환승지 추가 버튼
+                        // 환승지 추가 버튼 (주황색)
                         Obx(() {
                           if (transferStations.length < 3) {
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 16),
-                              child: _buildAddTransferButton(
-                                onTap: () {
-                                  editingMode.value = 'transfer';
-                                  editingTransferIndex.value = transferStations.length;
-                                  searchController.clear();
-                                  searchResults.clear();
+                              child: _buildOrangeTransferButton(
+                                onTap: () async {
+                                  final result = await Get.toNamed('/location-search', arguments: {
+                                    'mode': 'transfer',
+                                    'title': '환승지 추가'
+                                  });
+                                  
+                                  if (result != null) {
+                                    transferStations.add(LocationInfo(
+                                      name: result['name'],
+                                      type: result['type'] ?? 'subway',
+                                      lineInfo: result['lineInfo'] ?? '',
+                                      code: result['code'] ?? '',
+                                    ));
+                                  }
                                 },
                                 count: transferStations.length,
                               ),
@@ -160,21 +179,19 @@ class StepRouteSetupNew extends GetView<OnboardingController> {
                           return const SizedBox.shrink();
                         }),
 
-                        // 도착지 설정
-                        Obx(() => _buildLocationSection(
-                          title: '도착지',
-                          subtitle: '회사 근처 지하철역 또는 버스정류장',
-                          icon: Icons.business,
-                          color: const Color(0xFF10B981), // 초록색
-                          selectedLocation: selectedArrival.value,
-                          placeholder: '예: 역삼역, 선릉역.포스코센터',
-                          onTap: () {
-                            editingMode.value = 'arrival';
-                            searchController.clear();
-                            searchResults.clear();
+                        // 도착지 설정 버튼
+                        _buildArrivalButton(
+                          onTap: () async {
+                            final result = await Get.toNamed('/location-search', arguments: {
+                              'mode': 'arrival',
+                              'title': '도착지 설정'
+                            });
+                            
+                            if (result != null) {
+                              selectedArrival.value = result['name'];
+                            }
                           },
-                          onClear: () => selectedArrival.value = null,
-                        )),
+                        ),
 
                         const SizedBox(height: 24),
 
@@ -191,59 +208,6 @@ class StepRouteSetupNew extends GetView<OnboardingController> {
                   ),
                 ),
 
-                // 검색 오버레이
-                Obx(() {
-                  if (editingMode.value.isNotEmpty) {
-                    return _buildSearchOverlay(
-                      searchController: searchController,
-                      searchResults: searchResults,
-                      isSearching: isSearching,
-                      selectedTab: selectedTab,
-                      onSearch: performSearch,
-                      onTabChanged: (index) {
-                        selectedTab.value = index;
-                        performSearch(searchController.text);
-                      },
-                      onSelect: (LocationInfo location) {
-                        if (editingMode.value == 'departure') {
-                          selectedDeparture.value = location.name;
-                        } else if (editingMode.value == 'transfer') {
-                          transferStations.add(location);
-                        } else if (editingMode.value == 'arrival') {
-                          selectedArrival.value = location.name;
-                        }
-                        editingMode.value = '';
-                        searchController.clear();
-                        searchResults.clear();
-                      },
-                      onCancel: () {
-                        editingMode.value = '';
-                        searchController.clear();
-                        searchResults.clear();
-                      },
-                      onMapSelect: () {
-                        // 지도에서 선택 시 임시 위치
-                        String selectedLocation = '선택된 위치 (지도)';
-                        if (editingMode.value == 'departure') {
-                          selectedDeparture.value = selectedLocation;
-                        } else if (editingMode.value == 'transfer') {
-                          transferStations.add(LocationInfo(
-                            name: selectedLocation,
-                            type: 'map',
-                            lineInfo: '지도 검색',
-                            code: 'MAP',
-                          ));
-                        } else if (editingMode.value == 'arrival') {
-                          selectedArrival.value = selectedLocation;
-                        }
-                        editingMode.value = '';
-                        searchController.clear();
-                        searchResults.clear();
-                      },
-                    );
-                  }
-                  return const SizedBox.shrink();
-                }),
                 
                 // 커스텀 하단 버튼
                 _buildCustomBottomBar(selectedDeparture, selectedArrival),
@@ -566,6 +530,50 @@ class StepRouteSetupNew extends GetView<OnboardingController> {
     required VoidCallback onTap,
     required int count,
   }) {
+    // 첫 번째는 '출발지 설정', 그 이후는 '환승지 추가'
+    String buttonText = count == 0 ? '출발지 설정' : '환승지 추가 ($count/3)';
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
+            style: BorderStyle.solid,
+            width: 2,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.add,
+              color: const Color(0xFF3B82F6),
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              buttonText,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF3B82F6),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrangeTransferButton({
+    required VoidCallback onTap,
+    required int count,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -585,16 +593,56 @@ class StepRouteSetupNew extends GetView<OnboardingController> {
           children: [
             Icon(
               Icons.add,
-              color: Colors.orange[600],
+              color: const Color(0xFFF97316),
               size: 20,
             ),
             const SizedBox(width: 8),
             Text(
               '환승지 추가 ($count/3)',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
-                color: Colors.orange[600],
+                color: Color(0xFFF97316),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildArrivalButton({
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFF10B981).withValues(alpha: 0.3),
+            style: BorderStyle.solid,
+            width: 2,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.add,
+              color: const Color(0xFF10B981),
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '도착지 설정',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF10B981),
               ),
             ),
           ],
