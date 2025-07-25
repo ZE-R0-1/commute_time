@@ -184,6 +184,7 @@ class LocationSearchScreen extends GetView<LocationSearchController> {
       minLevel: 3,
       maxLevel: 3,
       markers: controller.markers,
+      circles: controller.circles, // 검색 반경 원 추가
     );
   }
 
