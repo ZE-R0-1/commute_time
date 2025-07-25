@@ -341,22 +341,42 @@ class LocationSearchController extends GetxController {
         final documents = data['documents'] as List;
         
         print('✅ 검색 완료! 총 ${documents.length}개의 지하철역 발견');
-        print('📋 지하철역 목록:');
         
+        // 기존 마커 제거
+        markers.clear();
+        await mapController!.clearMarker();
+        
+        // 검색 결과를 마커로 표시
         for (int i = 0; i < documents.length; i++) {
           final station = documents[i];
+          final lat = double.parse(station['y'].toString());
+          final lng = double.parse(station['x'].toString());
+          
+          // 마커 생성
+          final marker = Marker(
+            markerId: 'subway_${station['id']}',
+            latLng: LatLng(lat, lng),
+            width: 30,
+            height: 35,
+            offsetX: 15,
+            offsetY: 35,
+          );
+          
+          markers.add(marker);
+          
           print('${i + 1}. ${station['place_name']}');
           print('   - 주소: ${station['address_name']}');
-          print('   - 도로명주소: ${station['road_address_name']}');
-          print('   - 카테고리: ${station['category_name']}');
           print('   - 거리: ${station['distance']}m');
-          print('   - 좌표: (${station['y']}, ${station['x']})');
-          print('   - ID: ${station['id']}');
-          if (station['phone']?.toString().isNotEmpty == true) {
-            print('   - 전화번호: ${station['phone']}');
-          }
+          print('   - 좌표: (${lat}, ${lng})');
           print('');
         }
+        
+        // 지도에 마커 추가
+        if (markers.isNotEmpty) {
+          await mapController!.addMarker(markers: markers);
+          print('🗺️ ${markers.length}개의 지하철역 마커를 지도에 표시했습니다.');
+        }
+        
       } else {
         print('❌ API 호출 실패: ${response.statusCode}');
         print('📄 응답 내용: ${response.body}');
@@ -449,6 +469,86 @@ class LocationSearchController extends GetxController {
       
       // 카테고리 간 딜레이
       await Future.delayed(const Duration(milliseconds: 500));
+    }
+  }
+
+  // 특정 위치에서 지하철역 검색 (드래그 완료 시 사용)
+  Future<void> _searchSubwayStationsAtLocation(LatLng center) async {
+    if (mapController == null) return;
+
+    try {
+      print('🚇 새 위치에서 지하철역 검색 시작');
+      
+      // 200m 반경 원 표시
+      await _showSearchRadius(center);
+
+      // 카카오 REST API로 카테고리 검색
+      final apiKey = dotenv.env['KAKAO_REST_API_KEY'] ?? '';
+      if (apiKey.isEmpty) {
+        print('❌ 카카오 REST API 키가 없습니다.');
+        return;
+      }
+
+      final url = Uri.parse(
+        'https://dapi.kakao.com/v2/local/search/category.json'
+        '?category_group_code=SW8'
+        '&x=${center.longitude}'
+        '&y=${center.latitude}'
+        '&radius=200'
+        '&sort=distance'
+        '&page=1'
+        '&size=15'
+      );
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'KakaoAK $apiKey',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final documents = data['documents'] as List;
+        
+        print('✅ 새 위치 검색 완료! 총 ${documents.length}개의 지하철역 발견');
+        
+        // 기존 마커 제거
+        markers.clear();
+        await mapController!.clearMarker();
+        
+        // 검색 결과를 마커로 표시
+        for (int i = 0; i < documents.length; i++) {
+          final station = documents[i];
+          final lat = double.parse(station['y'].toString());
+          final lng = double.parse(station['x'].toString());
+          
+          // 마커 생성
+          final marker = Marker(
+            markerId: 'subway_${station['id']}',
+            latLng: LatLng(lat, lng),
+            width: 30,
+            height: 35,
+            offsetX: 15,
+            offsetY: 35,
+          );
+          
+          markers.add(marker);
+        }
+        
+        // 지도에 마커 추가
+        if (markers.isNotEmpty) {
+          await mapController!.addMarker(markers: markers);
+          print('🗺️ ${markers.length}개의 지하철역 마커를 새 위치에 표시했습니다.');
+        }
+        
+      } else {
+        print('❌ 새 위치 API 호출 실패: ${response.statusCode}');
+      }
+
+    } catch (e, stackTrace) {
+      print('❌ 새 위치 지하철역 검색 중 오류 발생: $e');
     }
   }
 
