@@ -296,7 +296,13 @@ class LocationSearchController extends GetxController {
 
   // 카테고리 변경
   void changeCategory(int category) {
+    if (selectedCategory.value == category) return; // 같은 카테고리 선택 시 무시
+    
     selectedCategory.value = category;
+    
+    // 검색 결과 숨기기
+    showSearchResults.value = false;
+    addressSearchResults.clear();
     
     // 지하철역 카테고리 선택 시 REST API로 지하철역 검색
     if (category == 0) {
@@ -306,10 +312,6 @@ class LocationSearchController extends GetxController {
     // 버스정류장 카테고리 선택 시 REST API로 버스정류장 검색
     if (category == 1) {
       _searchBusStopsWithRestAPI();
-    }
-    
-    if (searchQuery.value.isNotEmpty) {
-      performSearch(searchQuery.value);
     }
   }
 
@@ -679,7 +681,7 @@ class LocationSearchController extends GetxController {
 
       final url = Uri.parse(
         'https://dapi.kakao.com/v2/local/search/keyword.json'
-        '?query=지하철'
+        '?query=버스정류장'
         '&x=${center.longitude}'
         '&y=${center.latitude}'
         '&radius=200'
