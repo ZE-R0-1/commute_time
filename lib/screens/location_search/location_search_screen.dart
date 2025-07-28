@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 import 'location_search_controller.dart';
+import 'search_result_screen.dart';
+import 'search_result_controller.dart';
 
 class LocationSearchScreen extends GetView<LocationSearchController> {
   const LocationSearchScreen({super.key});
@@ -49,50 +51,42 @@ class LocationSearchScreen extends GetView<LocationSearchController> {
   Widget _buildSearchSection(TextEditingController searchController) {
     return Column(
       children: [
-        // 검색창 (카카오맵 스타일)
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: TextField(
-            controller: searchController,
-            onChanged: controller.performAddressSearch,
-            decoration: InputDecoration(
-              hintText: '주소, 건물명, 장소명을 입력하세요',
-              hintStyle: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 15,
-              ),
-              prefixIcon: const Icon(
-                Icons.search,
-                color: Colors.grey,
-                size: 22,
-              ),
-              suffixIcon: Obx(() => controller.searchQuery.value.isNotEmpty
-                  ? IconButton(
-                      icon: Icon(
-                        Icons.cancel,
-                        color: Colors.grey[400],
-                        size: 20,
+        // 검색창 (터치 전용 - 카카오맵 스타일)
+        GestureDetector(
+          onTap: _openSearchScreen,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.search,
+                    color: Colors.grey,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '주소, 건물명, 장소명을 입력하세요',
+                      style: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 15,
                       ),
-                      onPressed: () {
-                        searchController.clear();
-                        controller.performAddressSearch('');
-                      },
-                    )
-                  : const SizedBox.shrink()),
-              border: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -119,11 +113,6 @@ class LocationSearchScreen extends GetView<LocationSearchController> {
             )),
           ],
         ),
-        
-        // 주소검색 결과 표시
-        Obx(() => controller.showSearchResults.value
-            ? _buildAddressSearchResults()
-            : const SizedBox.shrink()),
       ],
     );
   }
@@ -181,146 +170,44 @@ class LocationSearchScreen extends GetView<LocationSearchController> {
     );
   }
 
-  Widget _buildAddressSearchResults() {
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      constraints: const BoxConstraints(maxHeight: 300),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // 헤더
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(8),
-                topRight: Radius.circular(8),
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.location_on, size: 18, color: Colors.grey),
-                const SizedBox(width: 8),
-                const Text(
-                  '검색 결과',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black87,
-                  ),
-                ),
-                const Spacer(),
-                Obx(() => controller.isLoading.value
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const SizedBox.shrink()),
-              ],
-            ),
-          ),
-          // 검색 결과 리스트
-          Expanded(
-            child: Obx(() => controller.addressSearchResults.isEmpty
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text(
-                        '검색 결과가 없습니다',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: controller.addressSearchResults.length,
-                    separatorBuilder: (context, index) => Divider(
-                      height: 1,
-                      color: Colors.grey[200],
-                    ),
-                    itemBuilder: (context, index) {
-                      final address = controller.addressSearchResults[index];
-                      return ListTile(
-                        onTap: () => controller.selectAddress(address),
-                        dense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        leading: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.place,
-                            size: 18,
-                            color: Colors.blue,
-                          ),
-                        ),
-                        title: Text(
-                          address.placeName.isNotEmpty 
-                              ? address.placeName 
-                              : address.addressName,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black87,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (address.addressName.isNotEmpty)
-                              Text(
-                                address.addressName,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey[600],
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            if (address.roadAddressName.isNotEmpty)
-                              Text(
-                                address.roadAddressName,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[500],
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                          ],
-                        ),
-                        trailing: const Icon(
-                          Icons.arrow_forward_ios,
-                          size: 16,
-                          color: Colors.grey,
-                        ),
-                      );
-                    },
-                  )),
-          ),
-        ],
-      ),
-    );
+  void _openSearchScreen() async {
+    try {
+      // SearchResultController를 등록 (이미 존재하면 재사용)
+      if (!Get.isRegistered<SearchResultController>()) {
+        Get.put(SearchResultController());
+      }
+      
+      // 검색 화면으로 이동하고 결과 대기
+      final result = await Get.to(() => const SearchResultScreen());
+      
+      // 결과가 있으면 처리
+      if (result != null && result is Map<String, dynamic>) {
+        _handleSearchResult(result);
+      }
+    } catch (e) {
+      print('❌ 검색 화면 오류: $e');
+    } finally {
+      // SearchResultController 정리 (안전하게)
+      try {
+        if (Get.isRegistered<SearchResultController>()) {
+          Get.delete<SearchResultController>();
+        }
+      } catch (e) {
+        print('❌ 컨트롤러 정리 오류: $e');
+      }
+    }
+  }
+
+  void _handleSearchResult(Map<String, dynamic> result) {
+    // 지도 중심을 선택된 위치로 이동
+    final latitude = result['latitude'] as double?;
+    final longitude = result['longitude'] as double?;
+    
+    if (latitude != null && longitude != null && controller.mapController != null) {
+      controller.mapController!.setCenter(LatLng(latitude, longitude));
+      print('📍 선택된 위치로 지도 이동: (${latitude}, ${longitude})');
+      print('🏷️ 선택된 장소: ${result['title']}');
+    }
   }
 
   Widget _buildMapSection() {
