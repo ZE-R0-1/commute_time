@@ -64,9 +64,9 @@ class LocationSearchScreen extends GetView<LocationSearchController> {
           ),
           child: TextField(
             controller: searchController,
-            onChanged: controller.performSearch,
+            onChanged: controller.performAddressSearch,
             decoration: InputDecoration(
-              hintText: '역이나 정류장 이름을 입력하세요',
+              hintText: '주소, 건물명, 장소명을 입력하세요',
               hintStyle: TextStyle(
                 color: Colors.grey[500],
                 fontSize: 15,
@@ -85,7 +85,7 @@ class LocationSearchScreen extends GetView<LocationSearchController> {
                       ),
                       onPressed: () {
                         searchController.clear();
-                        controller.performSearch('');
+                        controller.performAddressSearch('');
                       },
                     )
                   : const SizedBox.shrink()),
@@ -119,6 +119,11 @@ class LocationSearchScreen extends GetView<LocationSearchController> {
             )),
           ],
         ),
+        
+        // 주소검색 결과 표시
+        Obx(() => controller.showSearchResults.value
+            ? _buildAddressSearchResults()
+            : const SizedBox.shrink()),
       ],
     );
   }
@@ -172,6 +177,148 @@ class LocationSearchScreen extends GetView<LocationSearchController> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAddressSearchResults() {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      constraints: const BoxConstraints(maxHeight: 300),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // 헤더
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(8),
+                topRight: Radius.circular(8),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.location_on, size: 18, color: Colors.grey),
+                const SizedBox(width: 8),
+                const Text(
+                  '검색 결과',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
+                ),
+                const Spacer(),
+                Obx(() => controller.isLoading.value
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const SizedBox.shrink()),
+              ],
+            ),
+          ),
+          // 검색 결과 리스트
+          Expanded(
+            child: Obx(() => controller.addressSearchResults.isEmpty
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text(
+                        '검색 결과가 없습니다',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: controller.addressSearchResults.length,
+                    separatorBuilder: (context, index) => Divider(
+                      height: 1,
+                      color: Colors.grey[200],
+                    ),
+                    itemBuilder: (context, index) {
+                      final address = controller.addressSearchResults[index];
+                      return ListTile(
+                        onTap: () => controller.selectAddress(address),
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        leading: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.place,
+                            size: 18,
+                            color: Colors.blue,
+                          ),
+                        ),
+                        title: Text(
+                          address.placeName.isNotEmpty 
+                              ? address.placeName 
+                              : address.addressName,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (address.addressName.isNotEmpty)
+                              Text(
+                                address.addressName,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            if (address.roadAddressName.isNotEmpty)
+                              Text(
+                                address.roadAddressName,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[500],
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
+                        trailing: const Icon(
+                          Icons.arrow_forward_ios,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                      );
+                    },
+                  )),
+          ),
+        ],
       ),
     );
   }
