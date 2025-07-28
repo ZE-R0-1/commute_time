@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../services/gyeonggi_bus_service.dart';
 
 class LocationSearchController extends GetxController {
   // 카카오맵 관련
@@ -42,6 +43,7 @@ class LocationSearchController extends GetxController {
   
   // 디바운스 타이머
   Timer? _searchDebounceTimer;
+
 
   @override
   void onInit() {
@@ -406,8 +408,6 @@ class LocationSearchController extends GetxController {
       final center = await mapController!.getCenter();
       print('📍 현재 맵 중심 좌표: (${center.latitude}, ${center.longitude})');
 
-      // 200m 반경 원 표시 (희미하게)
-      await _showSearchRadius(center);
 
       // 카카오 REST API로 카테고리 검색
       final apiKey = dotenv.env['KAKAO_REST_API_KEY'] ?? '';
@@ -421,7 +421,7 @@ class LocationSearchController extends GetxController {
         '?category_group_code=SW8'
         '&x=${center.longitude}'
         '&y=${center.latitude}'
-        '&radius=200'
+        '&radius=500'
         '&sort=distance'
         '&page=1'
         '&size=15'
@@ -455,14 +455,10 @@ class LocationSearchController extends GetxController {
           final lat = double.parse(station['y'].toString());
           final lng = double.parse(station['x'].toString());
           
-          // 마커 생성
+          // 마커 생성 (기본 마커)
           final marker = Marker(
             markerId: 'subway_${station['id']}',
             latLng: LatLng(lat, lng),
-            width: 30,
-            height: 35,
-            offsetX: 15,
-            offsetY: 35,
           );
           
           markers.add(marker);
@@ -491,38 +487,6 @@ class LocationSearchController extends GetxController {
     }
   }
 
-  // 검색 반경 원 표시 (희미하게)
-  Future<void> _showSearchRadius(LatLng center) async {
-    if (mapController == null) return;
-
-    try {
-      // 기존 원 제거
-      circles.clear();
-      
-      // 200m 반경 원 생성 (희미한 파란색)
-      final searchRadiusCircle = Circle(
-        circleId: 'search_radius',
-        center: center,
-        radius: 200, // 200m
-        strokeWidth: 1,
-        strokeColor: Colors.blue.withValues(alpha: 0.3), // 희미한 파란색 테두리
-        strokeOpacity: 0.3,
-        fillColor: Colors.blue.withValues(alpha: 0.1), // 매우 희미한 파란색 채우기
-        fillOpacity: 0.1,
-        zIndex: 1, // 다른 요소들보다 뒤에 표시
-      );
-
-      circles.add(searchRadiusCircle);
-      
-      // 지도에 원 추가
-      await mapController!.addCircle(circles: circles);
-      
-      print('🔵 200m 검색 반경 원 표시 완료');
-      
-    } catch (e) {
-      print('❌ 검색 반경 원 표시 실패: $e');
-    }
-  }
 
   // 다른 카테고리로 테스트 (은행, 편의점 등)
   Future<void> _testOtherCategories() async {
@@ -582,8 +546,6 @@ class LocationSearchController extends GetxController {
     try {
       print('🚇 새 위치에서 지하철역 검색 시작');
       
-      // 200m 반경 원 표시
-      await _showSearchRadius(center);
 
       // 카카오 REST API로 카테고리 검색
       final apiKey = dotenv.env['KAKAO_REST_API_KEY'] ?? '';
@@ -597,7 +559,7 @@ class LocationSearchController extends GetxController {
         '?category_group_code=SW8'
         '&x=${center.longitude}'
         '&y=${center.latitude}'
-        '&radius=200'
+        '&radius=500'
         '&sort=distance'
         '&page=1'
         '&size=15'
@@ -627,14 +589,10 @@ class LocationSearchController extends GetxController {
           final lat = double.parse(station['y'].toString());
           final lng = double.parse(station['x'].toString());
           
-          // 마커 생성
+          // 마커 생성 (기본 마커)
           final marker = Marker(
             markerId: 'subway_${station['id']}',
             latLng: LatLng(lat, lng),
-            width: 30,
-            height: 35,
-            offsetX: 15,
-            offsetY: 35,
           );
           
           markers.add(marker);
@@ -655,7 +613,7 @@ class LocationSearchController extends GetxController {
     }
   }
 
-  // REST API로 버스정류장 검색 (키워드 검색 사용)
+  // REST API로 버스정류장 검색 (경기도 API + 카카오 키워드 검색)
   Future<void> _searchBusStopsWithRestAPI() async {
     if (mapController == null) {
       print('❌ 맵 컨트롤러가 초기화되지 않았습니다.');
@@ -663,16 +621,80 @@ class LocationSearchController extends GetxController {
     }
 
     try {
-      print('🚌 버스정류장 카테고리 선택됨 - 키워드 검색 시작');
+      print('🚌 버스정류장 카테고리 선택됨 - 통합 검색 시작');
       
       // 현재 맵의 중심 좌표 가져오기
       final center = await mapController!.getCenter();
       print('📍 현재 맵 중심 좌표: (${center.latitude}, ${center.longitude})');
 
-      // 200m 반경 원 표시 (희미하게)
-      await _showBusSearchRadius(center);
 
-      // 카카오 REST API로 키워드 검색 (버스정류장 키워드 사용)
+      // 기존 마커 제거
+      markers.clear();
+      await mapController!.clearMarker();
+
+      // 1. 경기도 버스정류장 API 검색
+      await _searchGyeonggiBusStops(center);
+
+      // 2. 카카오 키워드 검색으로 추가 버스정류장 검색
+      await _searchKakaoBusStops(center);
+
+      // 지도에 마커 추가
+      if (markers.isNotEmpty) {
+        await mapController!.addMarker(markers: markers);
+        print('🗺️ 총 ${markers.length}개의 버스정류장 마커를 지도에 표시했습니다.');
+      }
+
+    } catch (e, stackTrace) {
+      print('❌ REST API 버스정류장 검색 중 오류 발생: $e');
+      print('📍 스택 트레이스: $stackTrace');
+    }
+  }
+
+  // 경기도 버스정류장 API 검색
+  Future<void> _searchGyeonggiBusStops(LatLng center) async {
+    try {
+      print('🏛️ 경기도 버스정류장 API 검색 시작');
+      
+      final gyeonggiBusStops = await GyeonggiBusService.getBusStopsByLocation(
+        center.latitude, 
+        center.longitude,
+        radius: 500, // 500m 반경
+      );
+
+      print('✅ 경기도 API 검색 완료! 총 ${gyeonggiBusStops.length}개의 버스정류장 발견');
+
+      for (int i = 0; i < gyeonggiBusStops.length; i++) {
+        final busStop = gyeonggiBusStops[i];
+        
+        // 마커 생성 (경기도 버스정류장용)
+        final marker = Marker(
+          markerId: 'gyeonggi_bus_${busStop.stationId}',
+          latLng: LatLng(busStop.y, busStop.x),
+        );
+        
+        markers.add(marker);
+        
+        print('${i + 1}. ${busStop.stationName}');
+        print('   - ID: ${busStop.stationId}');
+        print('   - 지역: ${busStop.regionName}');
+        print('   - 좌표: (${busStop.y}, ${busStop.x})');
+        if (busStop.mobileNo.isNotEmpty) {
+          print('   - 모바일번호: ${busStop.mobileNo}');
+        }
+        print('');
+      }
+
+    } catch (e, stackTrace) {
+      print('❌ 경기도 버스정류장 API 검색 중 오류: $e');
+      print('📍 스택 트레이스: $stackTrace');
+    }
+  }
+
+  // 카카오 키워드 검색으로 추가 버스정류장 검색
+  Future<void> _searchKakaoBusStops(LatLng center) async {
+    try {
+      print('🔍 카카오 키워드 검색으로 추가 버스정류장 검색 시작');
+      
       final apiKey = dotenv.env['KAKAO_REST_API_KEY'] ?? '';
       if (apiKey.isEmpty) {
         print('❌ 카카오 REST API 키가 없습니다.');
@@ -684,13 +706,13 @@ class LocationSearchController extends GetxController {
         '?query=버스정류장'
         '&x=${center.longitude}'
         '&y=${center.latitude}'
-        '&radius=200'
+        '&radius=500'
         '&sort=distance'
         '&page=1'
-        '&size=15'
+        '&size=10'
       );
 
-      print('🔍 API 요청 URL: $url');
+      print('🔍 카카오 API 요청 URL: $url');
 
       final response = await http.get(
         url,
@@ -700,101 +722,54 @@ class LocationSearchController extends GetxController {
         },
       ).timeout(const Duration(seconds: 10));
 
-      print('📡 HTTP 응답 상태: ${response.statusCode}');
+      print('📡 카카오 HTTP 응답 상태: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final documents = data['documents'] as List;
         
-        print('✅ 검색 완료! 총 ${documents.length}개의 버스정류장 발견');
+        print('✅ 카카오 검색 완료! 총 ${documents.length}개의 추가 버스정류장 발견');
         
-        // 기존 마커 제거
-        markers.clear();
-        await mapController!.clearMarker();
+        // 기존 마커와 중복 확인을 위한 Set
+        final existingLocations = markers.map((m) => '${m.latLng.latitude}_${m.latLng.longitude}').toSet();
         
-        // 검색 결과를 마커로 표시
         for (int i = 0; i < documents.length; i++) {
           final busStop = documents[i];
           final lat = double.parse(busStop['y'].toString());
           final lng = double.parse(busStop['x'].toString());
           
-          // 마커 생성 (버스 마커)
+          // 중복 위치 확인 (100m 이내는 같은 정류장으로 간주)
+          final locationKey = '${lat.toStringAsFixed(3)}_${lng.toStringAsFixed(3)}';
+          if (existingLocations.contains(locationKey)) {
+            continue; // 중복이면 스킵
+          }
+          
+          // 마커 생성 (카카오 버스정류장용)
           final marker = Marker(
-            markerId: 'bus_${busStop['id']}',
+            markerId: 'kakao_bus_${busStop['id']}',
             latLng: LatLng(lat, lng),
-            width: 30,
-            height: 35,
-            offsetX: 15,
-            offsetY: 35,
           );
           
           markers.add(marker);
+          existingLocations.add(locationKey);
           
-          // 모든 데이터 필드 출력
-          print('${i + 1}. ${busStop['place_name']}');
-          print('   - ID: ${busStop['id'] ?? 'N/A'}');
+          print('카카오 ${i + 1}. ${busStop['place_name']}');
           print('   - 주소: ${busStop['address_name'] ?? 'N/A'}');
-          print('   - 도로명주소: ${busStop['road_address_name'] ?? 'N/A'}');
-          print('   - 카테고리명: ${busStop['category_name'] ?? 'N/A'}');
-          print('   - 카테고리그룹코드: ${busStop['category_group_code'] ?? 'N/A'}');
-          print('   - 카테고리그룹명: ${busStop['category_group_name'] ?? 'N/A'}');
-          print('   - 전화번호: ${busStop['phone'] ?? 'N/A'}');
-          print('   - 플레이스 URL: ${busStop['place_url'] ?? 'N/A'}');
           print('   - 거리: ${busStop['distance']}m');
-          print('   - 좌표: (${lat}, ${lng})');
-          print('   - 전체 데이터: ${busStop.toString()}');
+          print('   - 좌표: ($lat, $lng)');
           print('');
         }
         
-        // 지도에 마커 추가
-        if (markers.isNotEmpty) {
-          await mapController!.addMarker(markers: markers);
-          print('🗺️ ${markers.length}개의 버스정류장 마커를 지도에 표시했습니다.');
-        }
-        
       } else {
-        print('❌ API 호출 실패: ${response.statusCode}');
-        print('📄 응답 내용: ${response.body}');
+        print('❌ 카카오 API 호출 실패: ${response.statusCode}');
       }
 
     } catch (e, stackTrace) {
-      print('❌ REST API 버스정류장 검색 중 오류 발생: $e');
-      print('📍 스택 트레이스: $stackTrace');
+      print('❌ 카카오 버스정류장 검색 중 오류: $e');
     }
   }
 
-  // 버스정류장용 검색 반경 원 표시 (희미한 초록색)
-  Future<void> _showBusSearchRadius(LatLng center) async {
-    if (mapController == null) return;
 
-    try {
-      // 기존 원 제거
-      circles.clear();
-      
-      // 200m 반경 원 생성 (희미한 초록색)
-      final searchRadiusCircle = Circle(
-        circleId: 'search_radius',
-        center: center,
-        radius: 200, // 200m
-        strokeWidth: 1,
-        strokeColor: Colors.green.withValues(alpha: 0.3), // 희미한 초록색 테두리
-        strokeOpacity: 0.3,
-        fillColor: Colors.green.withValues(alpha: 0.1), // 매우 희미한 초록색 채우기
-        fillOpacity: 0.1,
-        zIndex: 1, // 다른 요소들보다 뒤에 표시
-      );
-
-      circles.add(searchRadiusCircle);
-      
-      // 지도에 원 추가
-      await mapController!.addCircle(circles: circles);
-      
-      print('🟢 200m 버스정류장 검색 반경 원 표시 완료');
-      
-    } catch (e) {
-      print('❌ 버스정류장 검색 반경 원 표시 실패: $e');
-    }
-  }
 
   // 위치 선택
   void selectLocation(LocationInfo location) {
