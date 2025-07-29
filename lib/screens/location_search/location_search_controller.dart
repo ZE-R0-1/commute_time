@@ -53,6 +53,9 @@ class LocationSearchController extends GetxController {
   
   // 바텀시트 로딩 상태
   final RxBool isBottomSheetLoading = false.obs;
+  
+  // 바텀시트 표시 상태
+  final RxBool isBottomSheetVisible = false.obs;
 
   // 마커ID와 버스정류장 정보 매핑
   final Map<String, GyeonggiBusStop> busStopMap = <String, GyeonggiBusStop>{};
@@ -798,6 +801,12 @@ class LocationSearchController extends GetxController {
   void onMarkerTap(String markerId, LatLng latLng, int zoomLevel) {
     print('🖱️ 마커 탭됨: $markerId');
     
+    // 바텀시트가 이미 열려있으면 무시
+    if (isBottomSheetVisible.value) {
+      print('⚠️ 바텀시트가 이미 열려있어서 마커 탭을 무시합니다.');
+      return;
+    }
+    
     // 버스정류장 마커인지 확인
     if (markerId.startsWith('gyeonggi_bus_')) {
       final busStop = busStopMap[markerId];
@@ -810,6 +819,10 @@ class LocationSearchController extends GetxController {
 
   // 버스 도착정보 바텀시트 표시
   void _showBusArrivalBottomSheet(GyeonggiBusStop busStop) {
+    // 바텀시트 표시 시 지도 드래그 비활성화
+    _setMapDraggable(false);
+    isBottomSheetVisible.value = true;
+    
     Get.bottomSheet(
       Container(
         height: Get.height * 0.6,
@@ -875,7 +888,7 @@ class LocationSearchController extends GetxController {
                     ),
                   ),
                   IconButton(
-                    onPressed: () => Get.back(),
+                    onPressed: () => _closeBusArrivalBottomSheet(),
                     icon: const Icon(Icons.close, color: Colors.grey),
                   ),
                 ],
@@ -945,10 +958,35 @@ class LocationSearchController extends GetxController {
         ),
       ),
       isScrollControlled: true,
-    );
+      isDismissible: true,
+      enableDrag: true,
+    ).then((_) {
+      // 바텀시트가 닫힐 때만 지도 드래그 재활성화 (Get.back 호출 안함)
+      if (isBottomSheetVisible.value) {
+        isBottomSheetVisible.value = false;
+        _setMapDraggable(true);
+      }
+    });
     
     // 바텀시트 표시 후 도착정보 로드
     _loadBusArrivalInfo(busStop.stationId);
+  }
+  
+  // 바텀시트 닫기 및 지도 드래그 재활성화
+  void _closeBusArrivalBottomSheet() {
+    if (isBottomSheetVisible.value) {
+      isBottomSheetVisible.value = false;
+      _setMapDraggable(true);
+      Get.back();
+    }
+  }
+  
+  // 지도 드래그 활성화/비활성화 설정
+  void _setMapDraggable(bool draggable) {
+    if (mapController != null) {
+      mapController!.setDraggable(draggable);
+      print('🗺️ 지도 드래그 ${draggable ? "활성화" : "비활성화"}');
+    }
   }
 
   // 버스 도착정보 카드 위젯
