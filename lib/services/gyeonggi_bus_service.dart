@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class GyeonggiBusService {
-  static const String baseUrl = 'http://apis.data.go.kr/1613000/BusSttnInfoInqireService';
+  static const String baseUrl = 'https://apis.data.go.kr/6410000/busstationservice/v2';
   
   // 좌표 기반 주변 정류소 조회
   static Future<List<GyeonggiBusStop>> getBusStopsByLocation(
@@ -20,13 +20,11 @@ class GyeonggiBusService {
 
       final encodedApiKey = Uri.encodeComponent(apiKey);
       final url = Uri.parse(
-        '$baseUrl/getCrdntPrxmtSttnList'
+        '$baseUrl/getBusStationAroundListv2'
         '?serviceKey=$encodedApiKey'
-        '&gpsLati=$lat'
-        '&gpsLong=$lon'
-        '&numOfRows=10'
-        '&pageNo=1'
-        '&_type=json'
+        '&x=$lon'
+        '&y=$lat'
+        '&format=json'
       );
 
       print('🚌 경기도 버스정류장 API 요청: $url');
@@ -63,6 +61,7 @@ class GyeonggiBusService {
         '$baseUrl/getBusStationList'
         '?serviceKey=$encodedApiKey'
         '&stationName=${Uri.encodeComponent(stationName)}'
+        '&format=json'
       );
 
       print('🔍 경기도 버스정류장 이름 검색 API 요청: $url');
@@ -84,31 +83,30 @@ class GyeonggiBusService {
     }
   }
 
-  // JSON 응답 파싱
+  // JSON 응답 파싱 (v2 API 형식)
   static List<GyeonggiBusStop> _parseJsonResponse(String jsonString) {
     try {
       final data = jsonDecode(jsonString);
       final response = data['response'];
-      final body = response['body'];
-      final items = body['items'];
+      final msgBody = response['msgBody'];
+      final busStationList = msgBody['busStationAroundList'];
       
       List<GyeonggiBusStop> busStops = [];
       
-      // items.item 배열 처리
-      if (items != null && items['item'] is List) {
-        final itemList = items['item'] as List;
-        for (final item in itemList) {
+      // busStationAroundList 배열 처리
+      if (busStationList != null && busStationList is List) {
+        for (final item in busStationList) {
           try {
             final busStop = GyeonggiBusStop(
-              stationId: item['nodeid']?.toString() ?? '',
-              stationName: item['nodenm']?.toString() ?? '',
-              x: double.tryParse(item['gpslong']?.toString() ?? '0') ?? 0.0,
-              y: double.tryParse(item['gpslati']?.toString() ?? '0') ?? 0.0,
-              regionName: item['citycode']?.toString() ?? '',
-              districtCd: item['citycode']?.toString() ?? '',
-              centerYn: 'N',
-              mgmtId: item['nodeid']?.toString() ?? '',
-              mobileNo: '',
+              stationId: item['stationId']?.toString() ?? '',
+              stationName: item['stationName']?.toString() ?? '',
+              x: double.tryParse(item['x']?.toString() ?? '0') ?? 0.0,
+              y: double.tryParse(item['y']?.toString() ?? '0') ?? 0.0,
+              regionName: item['regionName']?.toString() ?? '',
+              districtCd: item['districtCd']?.toString() ?? '',
+              centerYn: item['centerYn']?.toString() ?? 'N',
+              mgmtId: item['mgmtId']?.toString() ?? '',
+              mobileNo: item['mobileNo']?.toString() ?? '',
             );
             
             // 유효한 좌표가 있는 경우만 추가
