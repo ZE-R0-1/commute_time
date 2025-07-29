@@ -211,15 +211,68 @@ class LocationSearchScreen extends GetView<LocationSearchController> {
   }
 
   Widget _buildMapSection() {
-    return KakaoMap(
-      key: const ValueKey('location_search_map'), // 고유 키 추가
-      onMapCreated: controller.onMapCreated,
-      center: LatLng(37.4980, 127.0276), // 강남역 중심
-      minLevel: 3,
-      maxLevel: 3,
-      markers: controller.markers,
-      circles: controller.circles, // 검색 반경 원 추가
-      onMarkerTap: controller.onMarkerTap, // 마커 탭 이벤트 처리
+    return Stack(
+      children: [
+        KakaoMap(
+          key: const ValueKey('location_search_map'), // 고유 키 추가
+          onMapCreated: controller.onMapCreated,
+          center: LatLng(37.4980, 127.0276), // 강남역 중심
+          minLevel: 3,
+          maxLevel: 3,
+          markers: controller.markers,
+          circles: controller.circles, // 검색 반경 원 추가
+          onMarkerTap: controller.onMarkerTap, // 마커 탭 이벤트 처리
+          onDragChangeCallback: controller.onDragChange, // 드래그 감지 추가
+        ),
+        
+        // '이 위치 재검색' 버튼 (검색창 아래쪽)
+        Obx(() => controller.showResearchButton.value
+          ? Positioned(
+              top: 140, // 검색창과 카테고리 버튼 아래쪽으로 이동
+              left: 0,
+              right: 0,
+              child: Center(
+                child: GestureDetector(
+                  onTap: controller.onResearchButtonTap,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.refresh,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          '이 위치 재검색',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : const SizedBox.shrink(),
+        ),
+      ],
     );
   }
 

@@ -57,6 +57,12 @@ class LocationSearchController extends GetxController {
   // 바텀시트 표시 상태
   final RxBool isBottomSheetVisible = false.obs;
 
+  // 재검색 버튼 표시 상태
+  final RxBool showResearchButton = false.obs;
+
+  // 마지막 드래그 위치
+  LatLng? lastDragPosition;
+
   // 마커ID와 버스정류장 정보 매핑
   final Map<String, GyeonggiBusStop> busStopMap = <String, GyeonggiBusStop>{};
 
@@ -1174,6 +1180,73 @@ class LocationSearchController extends GetxController {
       print('❌ 버스 도착정보 로드 실패: $e');
     } finally {
       isBottomSheetLoading.value = false;
+    }
+  }
+
+  // 드래그 변화 감지
+  void onDragChange(LatLng latLng, int zoomLevel, DragType dragType) {
+    print('🖱️ 드래그 이벤트: $dragType at (${latLng.latitude}, ${latLng.longitude})');
+    
+    switch (dragType) {
+      case DragType.start:
+        print('🖱️ 드래그 시작');
+        showResearchButton.value = false;
+        break;
+      case DragType.move:
+        // 드래그 중에는 버튼 숨김
+        break;
+      case DragType.end:
+        print('🖱️ 드래그 완료: (${latLng.latitude}, ${latLng.longitude})');
+        lastDragPosition = latLng;
+        showResearchButton.value = true;
+        break;
+    }
+  }
+
+  // 재검색 버튼 탭 처리
+  void onResearchButtonTap() async {
+    if (lastDragPosition == null) return;
+    
+    print('🔍 새 위치에서 재검색 시작: (${lastDragPosition!.latitude}, ${lastDragPosition!.longitude})');
+    
+    // 재검색 버튼 숨기기
+    showResearchButton.value = false;
+    
+    // 선택된 카테고리에 따라 검색
+    if (selectedCategory.value == 0) {
+      // 지하철역 검색
+      await _searchSubwayStationsAtLocation(lastDragPosition!);
+    } else {
+      // 버스정류장 검색
+      await _searchBusStopsAtLocation(lastDragPosition!);
+    }
+  }
+
+  // 특정 위치에서 버스정류장 검색 (드래그 완료 시 사용)
+  Future<void> _searchBusStopsAtLocation(LatLng center) async {
+    if (mapController == null) return;
+
+    try {
+      print('🚌 새 위치에서 버스정류장 검색 시작');
+      
+      // 기존 마커 제거
+      markers.clear();
+      await mapController!.clearMarker();
+
+      // 1. 경기도 버스정류장 API 검색
+      await _searchGyeonggiBusStops(center);
+
+      // 2. 카카오 키워드 검색으로 추가 버스정류장 검색
+      await _searchKakaoBusStops(center);
+
+      // 지도에 마커 추가
+      if (markers.isNotEmpty) {
+        await mapController!.addMarker(markers: markers);
+        print('🗺️ 새 위치에 총 ${markers.length}개의 버스정류장 마커를 표시했습니다.');
+      }
+
+    } catch (e, stackTrace) {
+      print('❌ 새 위치 버스정류장 검색 중 오류 발생: $e');
     }
   }
 
