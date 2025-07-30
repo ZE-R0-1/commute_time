@@ -50,26 +50,60 @@ class BusArrivalService {
       final data = jsonDecode(jsonString);
       final response = data['response'];
       final msgBody = response['msgBody'];
-      final busArrivalList = msgBody['busArrivalList'];
+      final busArrivalData = msgBody['busArrivalList'];
       
       List<BusArrivalInfo> arrivalInfos = [];
       
-      // busArrivalList 배열 처리
-      if (busArrivalList != null && busArrivalList is List) {
-        for (final item in busArrivalList) {
+      // busArrivalList는 단일 객체 또는 배열일 수 있음
+      if (busArrivalData != null) {
+        List<dynamic> busArrivalList = [];
+        
+        if (busArrivalData is List) {
+          // 배열인 경우
+          busArrivalList = busArrivalData;
+        } else if (busArrivalData is Map<String, dynamic>) {
+          // 단일 객체인 경우 (로그에서 보이는 경우)
+          busArrivalList = [busArrivalData];
+        }
+        
+        print('📄 버스도착정보 원본 데이터: $busArrivalData');
+        print('✅ 경기도 버스 도착정보 파싱 시작! 총 ${busArrivalList.length}개 항목');
+        
+        for (int i = 0; i < busArrivalList.length; i++) {
+          final item = busArrivalList[i];
           try {
+            // routeTypeName 필드가 없을 수 있으므로 routeTypeCd를 기반으로 매핑
+            String routeTypeName = '일반';
+            final routeTypeCd = item['routeTypeCd']?.toString() ?? '';
+            switch (routeTypeCd) {
+              case '11':
+                routeTypeName = '직행좌석';
+                break;
+              case '12':
+                routeTypeName = '좌석';
+                break;
+              case '13':
+                routeTypeName = '일반';
+                break;
+              case '21':
+                routeTypeName = '광역급행';
+                break;
+              default:
+                routeTypeName = '일반';
+            }
+            
             final arrivalInfo = BusArrivalInfo(
               routeId: item['routeId']?.toString() ?? '',
               routeName: item['routeName']?.toString() ?? '',
-              routeTypeName: item['routeTypeName']?.toString() ?? '',
+              routeTypeName: routeTypeName,
               stationId: item['stationId']?.toString() ?? '',
               stationName: item['stationName']?.toString() ?? '',
               predictTime1: int.tryParse(item['predictTime1']?.toString() ?? '0') ?? 0,
               predictTime2: int.tryParse(item['predictTime2']?.toString() ?? '0') ?? 0,
               locationNo1: int.tryParse(item['locationNo1']?.toString() ?? '0') ?? 0,
               locationNo2: int.tryParse(item['locationNo2']?.toString() ?? '0') ?? 0,
-              lowPlate1: item['lowPlate1']?.toString() ?? 'N',
-              lowPlate2: item['lowPlate2']?.toString() ?? 'N',
+              lowPlate1: item['lowPlate1']?.toString() == '1' ? 'Y' : 'N',
+              lowPlate2: item['lowPlate2']?.toString() == '1' ? 'Y' : 'N',
               plateNo1: item['plateNo1']?.toString() ?? '',
               plateNo2: item['plateNo2']?.toString() ?? '',
               remainSeatCnt1: int.tryParse(item['remainSeatCnt1']?.toString() ?? '0') ?? 0,
@@ -77,8 +111,15 @@ class BusArrivalService {
             );
             
             arrivalInfos.add(arrivalInfo);
+            
+            print('경기도 버스 도착정보 ${i + 1}. ${arrivalInfo.routeName}번 (${arrivalInfo.routeTypeName})');
+            print('   - 첫번째 버스: ${arrivalInfo.predictTime1}분 후, ${arrivalInfo.locationNo1}정류장 전');
+            print('   - 두번째 버스: ${arrivalInfo.predictTime2}분 후, ${arrivalInfo.locationNo2}정류장 전');
+            print('   - 저상버스: 1번(${arrivalInfo.lowPlate1}), 2번(${arrivalInfo.lowPlate2})');
+            print('');
           } catch (e) {
-            print('❌ 버스 도착정보 파싱 오류: $e');
+            print('❌ 버스 도착정보 파싱 오류 ($i번째): $e');
+            print('   - 원본 데이터: $item');
             continue;
           }
         }
@@ -112,6 +153,7 @@ class BusArrivalInfo {
   final String plateNo2;         // 두번째차량 차량번호
   final int remainSeatCnt1;      // 첫번째차량 빈자리수
   final int remainSeatCnt2;      // 두번째차량 빈자리수
+  final DateTime loadedAt;       // 데이터 로드 시간
 
   BusArrivalInfo({
     required this.routeId,
@@ -129,7 +171,40 @@ class BusArrivalInfo {
     required this.plateNo2,
     required this.remainSeatCnt1,
     required this.remainSeatCnt2,
-  });
+    DateTime? loadedAt,
+  }) : loadedAt = loadedAt ?? DateTime.now();
+
+  // 실시간 카운트다운을 위한 계산된 시간 (초 단위)
+  int get predictTimeInSeconds1 {
+    final elapsed = DateTime.now().difference(loadedAt).inSeconds;
+    final totalSeconds = predictTime1 * 60;
+    final remaining = totalSeconds - elapsed;
+    return remaining > 0 ? remaining : 0;
+  }
+
+  int get predictTimeInSeconds2 {
+    final elapsed = DateTime.now().difference(loadedAt).inSeconds;
+    final totalSeconds = predictTime2 * 60;
+    final remaining = totalSeconds - elapsed;
+    return remaining > 0 ? remaining : 0;
+  }
+
+  // 포맷된 시간 표시 (분:초)
+  String get formattedTime1 {
+    final seconds = predictTimeInSeconds1;
+    if (seconds <= 0) return '곧 도착';
+    final minutes = seconds ~/ 60;
+    final remainingSeconds = seconds % 60;
+    return '${minutes}분 ${remainingSeconds}초';
+  }
+
+  String get formattedTime2 {
+    final seconds = predictTimeInSeconds2;
+    if (seconds <= 0) return '곧 도착';
+    final minutes = seconds ~/ 60;
+    final remainingSeconds = seconds % 60;
+    return '${minutes}분 ${remainingSeconds}초';
+  }
 
   @override
   String toString() {
