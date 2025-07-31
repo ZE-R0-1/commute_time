@@ -58,6 +58,9 @@ class LocationSearchController extends GetxController {
   // 지하철 도착정보
   final RxList<SubwayArrival> subwayArrivalInfos = <SubwayArrival>[].obs;
   final RxString selectedSubwayStation = ''.obs;
+  final RxList<SubwayArrival> subwayArrivals = <SubwayArrival>[].obs;
+  final RxBool isLoadingSubwayArrival = false.obs;
+  final RxString subwayArrivalErrorMessage = ''.obs;
   
   // 바텀시트 로딩 상태
   final RxBool isBottomSheetLoading = false.obs;
@@ -490,21 +493,30 @@ class LocationSearchController extends GetxController {
         markers.clear();
         await mapController!.clearMarker();
         
+        // 기존 지하철역 매핑 초기화
+        subwayStationMap.clear();
+        
         // 검색 결과를 마커로 표시
         for (int i = 0; i < documents.length; i++) {
           final station = documents[i];
           final lat = double.parse(station['y'].toString());
           final lng = double.parse(station['x'].toString());
+          final stationName = station['place_name'] as String;
           
           // 마커 생성 (기본 마커)
+          final markerId = 'subway_${station['id']}';
           final marker = Marker(
-            markerId: 'subway_${station['id']}',
+            markerId: markerId,
             latLng: LatLng(lat, lng),
           );
           
           markers.add(marker);
           
-          print('${i + 1}. ${station['place_name']}');
+          // 마커ID와 지하철역 이름 매핑 저장 (역명만 추출)
+          final cleanStationName = _cleanStationName(stationName);
+          subwayStationMap[markerId] = cleanStationName;
+          
+          print('${i + 1}. $stationName');
           print('   - 주소: ${station['address_name']}');
           print('   - 거리: ${station['distance']}m');
           print('   - 좌표: (${lat}, ${lng})');
@@ -780,8 +792,16 @@ class LocationSearchController extends GetxController {
       return;
     }
     
+    // 지하철역 마커인지 확인
+    if (markerId.startsWith('subway_')) {
+      final stationName = subwayStationMap[markerId];
+      if (stationName != null) {
+        selectedSubwayStation.value = stationName;
+        _showSubwayArrivalBottomSheet(stationName);
+      }
+    }
     // 버스정류장 마커인지 확인
-    if (markerId.startsWith('gyeonggi_bus_')) {
+    else if (markerId.startsWith('gyeonggi_bus_')) {
       final busStop = gyeonggiBusStopMap[markerId];
       if (busStop != null) {
         selectedBusStop.value = busStop;
@@ -1678,6 +1698,461 @@ class LocationSearchController extends GetxController {
     } catch (e, stackTrace) {
       print('❌ 새 위치 버스정류장 검색 중 오류 발생: $e');
     }
+  }
+
+  // 지하철 도착정보 바텀시트 표시
+  void _showSubwayArrivalBottomSheet(String stationName) {
+    // 바텀시트 표시 시 지도 드래그 비활성화
+    _setMapDraggable(false);
+    isBottomSheetVisible.value = true;
+    
+    isLoadingSubwayArrival.value = true;
+    subwayArrivalErrorMessage.value = '';
+    
+    Get.bottomSheet(
+      Container(
+        height: Get.height * 0.6,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          children: [
+            // 바텀시트 헤더
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.train,
+                    color: Colors.blue.shade600,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '${stationName}역',
+                      style: TextStyle(
+                        color: Colors.blue.shade800,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade100,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: IconButton(
+                      onPressed: () => _loadSubwayArrivalInfo(stationName),
+                      icon: Icon(
+                        Icons.refresh,
+                        color: Colors.blue.shade600,
+                        size: 20,
+                      ),
+                      tooltip: '새로고침',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () => _closeSubwayArrivalBottomSheet(),
+                    icon: Icon(
+                      Icons.close,
+                      color: Colors.blue.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // 지하철 도착정보 내용
+            Expanded(
+              child: Obx(() {
+                if (isLoadingSubwayArrival.value) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(40),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+                
+                if (subwayArrivalErrorMessage.value.isNotEmpty) {
+                  return Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          color: Colors.red.shade600,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          subwayArrivalErrorMessage.value,
+                          style: TextStyle(
+                            color: Colors.red.shade700,
+                            fontSize: 16,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: () => _loadSubwayArrivalInfo(stationName),
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('다시 시도'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade600,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                
+                if (subwayArrivals.isEmpty) {
+                  return Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.train_outlined,
+                          color: Colors.grey.shade400,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          '현재 도착 정보가 없습니다',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: subwayArrivals.length,
+                  itemBuilder: (context, index) {
+                    final arrival = subwayArrivals[index];
+                    return _buildSubwayArrivalCard(arrival);
+                  },
+                );
+              }),
+            ),
+          ],
+        ),
+      ),
+      isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
+    ).then((_) {
+      // 바텀시트가 닫힐 때만 지도 드래그 재활성화
+      if (isBottomSheetVisible.value) {
+        isBottomSheetVisible.value = false;
+        _setMapDraggable(true);
+      }
+    });
+    
+    // 바텀시트가 표시된 후 데이터 로드
+    _loadSubwayArrivalInfo(stationName);
+  }
+
+  // 지하철 도착정보 로드
+  Future<void> _loadSubwayArrivalInfo(String stationName) async {
+    try {
+      isLoadingSubwayArrival.value = true;
+      subwayArrivalErrorMessage.value = '';
+      
+      print('🚇 지하철 도착정보 로드 시작: $stationName');
+      print('🚇 DEBUG: 받은 stationName = "$stationName"');
+      // 역명 정리 (혹시 호선 정보가 포함되어 있다면 제거)
+      final cleanStationName = _cleanStationName(stationName);
+      print('🚇 DEBUG: 정리된 stationName = "$cleanStationName"');
+      
+      final arrivals = await SubwayService.getRealtimeArrival(cleanStationName);
+      subwayArrivals.value = arrivals;
+      
+      print('✅ 지하철 도착정보 로드 완료: ${arrivals.length}개');
+      
+    } catch (e) {
+      print('❌ 지하철 도착정보 로드 실패: $e');
+      subwayArrivalErrorMessage.value = '도착정보를 불러올 수 없습니다.\n잠시 후 다시 시도해주세요.';
+    } finally {
+      isLoadingSubwayArrival.value = false;
+    }
+  }
+
+  // 지하철 도착 정보 카드 위젯
+  Widget _buildSubwayArrivalCard(SubwayArrival arrival) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // 호선 정보
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: _getLineColor(arrival.subwayId),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              arrival.lineDisplayName,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          
+          // 열차 정보
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  arrival.cleanTrainLineNm,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      arrival.directionText,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // 열차 종류 표시 (급행/일반/특급 등)
+                    if (arrival.btrainSttus.isNotEmpty && arrival.btrainSttus != '일반')
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _getTrainTypeColor(arrival.btrainSttus),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          arrival.btrainSttus,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    if (arrival.btrainSttus.isNotEmpty && arrival.btrainSttus != '일반' && arrival.isLastTrain)
+                      const SizedBox(width: 4),
+                    if (arrival.isLastTrain)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade600,
+                          borderRadius: BorderRadius.circular(6),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.red.withValues(alpha: 0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.warning,
+                              size: 12,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              '막차',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          
+          // 도착 시간 및 상세 정보
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    arrival.arrivalStatusIcon,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    arrival.arrivalTimeText,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: _getArrivalColor(arrival.arvlCd),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                arrival.detailedArrivalInfo.isNotEmpty 
+                    ? arrival.detailedArrivalInfo 
+                    : _cleanStatusText(arrival.btrainSttus),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.end,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 지하철 호선 색상 (수도권 전체)
+  Color _getLineColor(String subwayId) {
+    switch (subwayId) {
+      // 서울지하철 1~9호선
+      case '1001': return const Color(0xFF0052A4); // 1호선 (진파랑)
+      case '1002': return const Color(0xFF00A84D); // 2호선 (초록)
+      case '1003': return const Color(0xFFEF7C1C); // 3호선 (주황)
+      case '1004': return const Color(0xFF00A5DE); // 4호선 (하늘)
+      case '1005': return const Color(0xFF996CAC); // 5호선 (보라)
+      case '1006': return const Color(0xFFCD7C2F); // 6호선 (갈색)
+      case '1007': return const Color(0xFF747F00); // 7호선 (올리브)
+      case '1008': return const Color(0xFFEA545D); // 8호선 (분홍)
+      case '1009': return const Color(0xFFBDB092); // 9호선 (금색)
+      
+      // 수도권 광역철도
+      case '1061': return const Color(0xFF0C8E72); // 중앙선 (청록)
+      case '1063': return const Color(0xFF77C4A3); // 경의중앙선 (연청록)
+      case '1065': return const Color(0xFF0090D2); // 공항철도 (진하늘)
+      case '1067': return const Color(0xFF178C4B); // 경춘선 (청록)
+      case '1075': return const Color(0xFFEAB026); // 수인분당선 (노랑)
+      case '1077': return const Color(0xFFD31145); // 신분당선 (빨강)
+      case '1092': return const Color(0xFFB7CE63); // 우이신설선 (연노랑)
+      case '1093': return const Color(0xFF8FC31F); // 서해선 (연두)
+      case '1081': return const Color(0xFF003DA5); // 경강선 (진파랑)
+      case '1032': return const Color(0xFF9B1B7E); // GTX-A (자주)
+      
+      // 인천지하철
+      case '1091': return const Color(0xFF759CCE); // 인천1호선 (하늘)
+      case '1094': return const Color(0xFFE6A829); // 인천2호선 (주황)
+      
+      default: return Colors.grey; // 알 수 없는 노선
+    }
+  }
+
+  // 도착 상태 색상
+  Color _getArrivalColor(int arvlCd) {
+    switch (arvlCd) {
+      case 0: return Colors.red;        // 진입
+      case 1: return Colors.orange;     // 도착
+      case 2: return Colors.green;      // 출발
+      case 3: return Colors.blue;       // 전역출발
+      case 4: return Colors.purple;     // 전역진입
+      case 5: return Colors.orange;     // 전역도착
+      case 99: return Colors.grey;      // 운행중
+      default: return Colors.black;
+    }
+  }
+
+  // 열차 종류 색상
+  Color _getTrainTypeColor(String trainType) {
+    switch (trainType) {
+      case '급행': return Colors.red.shade600;      // 급행
+      case 'ITX': return Colors.purple.shade600;   // ITX
+      case '특급': return Colors.orange.shade600;   // 특급
+      case '직행': return Colors.blue.shade600;     // 직행
+      default: return Colors.grey.shade600;        // 기타
+    }
+  }
+  
+  // 상태 텍스트 정리 (대괄호 제거)
+  String _cleanStatusText(String statusText) {
+    // [5]번째 전역 → 5번째 전역
+    return statusText.replaceAll(RegExp(r'\\[(\\d+)\\]'), r'$1');
+  }
+
+  // 지하철 바텀시트 닫기 및 지도 드래그 재활성화
+  void _closeSubwayArrivalBottomSheet() {
+    if (isBottomSheetVisible.value) {
+      isBottomSheetVisible.value = false;
+      _setMapDraggable(true);
+      Get.back();
+    }
+  }
+
+  // 지하철역명 정리 (호선 정보 및 "역" 제거)
+  String _cleanStationName(String stationName) {
+    // "강남역 2호선" → "강남"
+    // "강남역 신분당선" → "강남"
+    // "종각역 1호선" → "종각"
+    String cleaned = stationName.split(' ')[0]; // 호선 정보 제거
+    if (cleaned.endsWith('역')) {
+      cleaned = cleaned.substring(0, cleaned.length - 1); // "역" 제거
+    }
+    return cleaned;
   }
 
   // 위치 선택
