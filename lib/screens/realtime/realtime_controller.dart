@@ -5,10 +5,6 @@ import 'package:get_storage/get_storage.dart';
 
 import '../../app/services/subway_service.dart';
 import '../../app/services/location_service.dart';
-import '../../app/services/bus_service_simple.dart';
-import '../../app/services/route_transport_service.dart';
-import '../../app/models/bus_models.dart';
-import '../../app/models/route_models.dart';
 
 class RealtimeController extends GetxController with GetTickerProviderStateMixin {
   final GetStorage _storage = GetStorage();
@@ -21,8 +17,6 @@ class RealtimeController extends GetxController with GetTickerProviderStateMixin
   final Rx<CommuteType> commuteType = CommuteType.none.obs;
   
   // 버스 관련 변수
-  final RxList<BusStation> nearestBusStations = <BusStation>[].obs;
-  final RxMap<String, List<BusArrival>> busArrivals = <String, List<BusArrival>>{}.obs;
   final RxBool isBusLoading = false.obs;
   final RxString busErrorMessage = ''.obs;
   
@@ -30,7 +24,6 @@ class RealtimeController extends GetxController with GetTickerProviderStateMixin
   late TabController tabController;
   
   // 경로 기반 교통정보
-  final Rx<RouteBasedTransportInfo?> routeTransportInfo = Rx<RouteBasedTransportInfo?>(null);
   final RxBool isRouteLoading = false.obs;
   final RxString routeErrorMessage = ''.obs;
   final RxBool useRouteMode = false.obs; // 경로 기반 모드 사용 여부
@@ -103,7 +96,6 @@ class RealtimeController extends GetxController with GetTickerProviderStateMixin
       
       // 3. 교통 정보 로드 (모드에 따라)
       if (useRouteMode.value) {
-        await _loadRouteBasedTransportInfo();
       } else {
         await _loadTransportData();
       }
@@ -417,61 +409,7 @@ class RealtimeController extends GetxController with GetTickerProviderStateMixin
   Future<void> _loadTransportData() async {
     await Future.wait([
       _loadSubwayData(),
-      _loadBusData(),
     ]);
-  }
-  
-  // 버스 정보 로드
-  Future<void> _loadBusData() async {
-    try {
-      isBusLoading.value = true;
-      busErrorMessage.value = '';
-      
-      if (currentLatitude.value != 0 && currentLongitude.value != 0) {
-        // 가장 가까운 버스 정류장 찾기
-        final stations = await SimpleBusService.findNearestBusStations(
-          currentLatitude.value,
-          currentLongitude.value,
-        );
-        
-        // 상위 3개 정류장만 선택
-        nearestBusStations.value = stations.take(3).toList();
-        
-        // 각 정류장의 실시간 도착 정보 로드
-        final Map<String, List<BusArrival>> allArrivals = {};
-        for (final station in nearestBusStations) {
-          try {
-            final arrivals = await SimpleBusService.getRealtimeBusArrival(station.stationId);
-            allArrivals[station.stationId] = arrivals.take(5).toList(); // 상위 5개만
-          } catch (e) {
-            print('버스 정류장 ${station.stationName} 정보 로드 오류: $e');
-            allArrivals[station.stationId] = [];
-          }
-        }
-        
-        busArrivals.value = allArrivals;
-        
-        print('버스 정보 로드 완료: ${nearestBusStations.length}개 정류장');
-      } else {
-        busErrorMessage.value = '현재 위치를 확인할 수 없습니다.';
-        print('버스 정보 로드 실패: 위치 정보 없음');
-      }
-    } catch (e) {
-      busErrorMessage.value = '버스 정보를 불러올 수 없습니다.\n네트워크를 확인해주세요.';
-      print('버스 데이터 로드 오류: $e');
-    } finally {
-      isBusLoading.value = false;
-    }
-  }
-  
-  // 버스 정보가 있는지 확인
-  bool get hasBusData {
-    return nearestBusStations.isNotEmpty;
-  }
-  
-  // 특정 정류장의 버스 도착 정보 가져오기
-  List<BusArrival> getBusArrivalsForStation(String stationId) {
-    return busArrivals[stationId] ?? [];
   }
   
   // 경로 기반 모드 토글
@@ -481,123 +419,16 @@ class RealtimeController extends GetxController with GetTickerProviderStateMixin
     
     if (useRouteMode.value) {
       print('경로 기반 모드 활성화');
-      _loadRouteBasedTransportInfo();
     } else {
       print('현재 위치 기반 모드 활성화');
       _loadTransportData();
     }
   }
   
-  // 경로 기반 교통정보 로드
-  Future<void> _loadRouteBasedTransportInfo() async {
-    try {
-      isRouteLoading.value = true;
-      routeErrorMessage.value = '';
-      
-      // 집과 회사 좌표 정보 확인
-      final homeLat = _storage.read('home_latitude') as double?;
-      final homeLng = _storage.read('home_longitude') as double?;
-      final workLat = _storage.read('work_latitude') as double?;
-      final workLng = _storage.read('work_longitude') as double?;
-      
-      if (homeLat == null || homeLng == null || workLat == null || workLng == null) {
-        routeErrorMessage.value = '집과 회사 위치 정보가 필요합니다.\n설정에서 주소를 설정해주세요.';
-        return;
-      }
-      
-      if (homeAddress.value.isEmpty || workAddress.value.isEmpty) {
-        routeErrorMessage.value = '집과 회사 주소 정보가 필요합니다.\n설정에서 주소를 설정해주세요.';
-        return;
-      }
-      
-      // 출퇴근 방향 결정
-      CommuteDirection direction;
-      switch (commuteType.value) {
-        case CommuteType.toWork:
-          direction = CommuteDirection.toWork;
-          break;
-        case CommuteType.toHome:
-          direction = CommuteDirection.toHome;
-          break;
-        case CommuteType.none:
-          direction = CommuteDirection.flexible;
-          break;
-      }
-      
-      print('경로 기반 교통정보 로드 시작: ${direction.name}');
-      
-      final routeInfo = await RouteTransportService.getRouteBasedTransportInfo(
-        homeLat: homeLat,
-        homeLng: homeLng,
-        homeAddress: homeAddress.value,
-        workLat: workLat,
-        workLng: workLng,
-        workAddress: workAddress.value,
-        direction: direction,
-      );
-      
-      if (routeInfo != null) {
-        routeTransportInfo.value = routeInfo;
-        print('경로 기반 교통정보 로드 완료');
-        print('경로: ${routeInfo.route.routeSummary}');
-        print('지하철 정보: ${routeInfo.subwayInfos.length}개 역');
-        print('버스 정보: ${routeInfo.busInfos.length}개 정류장');
-        
-        // 알림 메시지 생성
-        final alerts = RouteTransportService.generateRouteAlerts(routeInfo);
-        if (alerts.isNotEmpty) {
-          print('경로 알림: ${alerts.join(', ')}');
-        }
-      } else {
-        routeErrorMessage.value = '경로 정보를 가져올 수 없습니다.\n네트워크 연결을 확인해주세요.';
-      }
-      
-    } catch (e) {
-      routeErrorMessage.value = '경로 기반 교통정보를 불러올 수 없습니다.\n잠시 후 다시 시도해주세요.';
-      print('경로 기반 교통정보 로드 오류: $e');
-    } finally {
-      isRouteLoading.value = false;
-    }
-  }
-  
-  // 경로 정보가 있는지 확인
-  bool get hasRouteData {
-    return routeTransportInfo.value != null;
-  }
-  
-  // 경로 기반 지하철 정보 가져오기
-  List<SubwayStationInfo> get routeSubwayInfos {
-    return routeTransportInfo.value?.subwayInfos ?? [];
-  }
-  
-  // 경로 기반 버스 정보 가져오기
-  List<BusStationInfo> get routeBusInfos {
-    return routeTransportInfo.value?.busInfos ?? [];
-  }
-  
-  // 경로 요약 정보
-  String get routeSummary {
-    final route = routeTransportInfo.value?.route;
-    if (route == null) return '';
-    
-    return '${route.startName} → ${route.endName}\n'
-           '${route.routeSummary} (${route.totalDurationText})';
-  }
-  
-  // 경로 기반 알림 메시지
-  List<String> get routeAlerts {
-    final info = routeTransportInfo.value;
-    if (info == null) return [];
-    
-    return RouteTransportService.generateRouteAlerts(info);
-  }
-  
   // 경로 새로고침
   Future<void> refreshRoute() async {
     print('경로 기반 교통정보 새로고침');
-    if (useRouteMode.value) {
-      await _loadRouteBasedTransportInfo();
-    }
+
     _resetCountdownTimer();
   }
   
@@ -607,7 +438,6 @@ class RealtimeController extends GetxController with GetTickerProviderStateMixin
     print('실시간 정보 새로고침 (모드: ${useRouteMode.value ? "경로기반" : "현재위치"})');
     
     if (useRouteMode.value) {
-      await _loadRouteBasedTransportInfo();
     } else {
       await _loadTransportData();
     }
