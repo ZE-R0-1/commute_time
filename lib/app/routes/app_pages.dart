@@ -8,17 +8,6 @@ import '../../screens/onboarding/onboarding_screen.dart';
 import '../../screens/onboarding/onboarding_binding.dart';
 import '../../screens/main/main_tab_screen.dart';
 import '../../screens/main/main_tab_binding.dart';
-import '../../screens/route_detail/route_detail_screen.dart';
-import '../../screens/route_detail/route_detail_binding.dart';
-import '../../screens/route_setup/route_setup_screen.dart';
-import '../../screens/route_setup/route_departure_screen.dart';
-import '../../screens/route_setup/route_departure_binding.dart';
-import '../../screens/route_setup/route_transfer_screen.dart';
-import '../../screens/route_setup/route_transfer_binding.dart';
-import '../../screens/route_setup/route_arrival_screen.dart';
-import '../../screens/route_setup/route_arrival_binding.dart';
-import '../../screens/map/map_selection_screen.dart';
-import '../../screens/map/map_selection_binding.dart';
 import '../../screens/location_search/location_search_screen.dart';
 import '../../screens/location_search/location_search_binding.dart';
 
@@ -56,53 +45,6 @@ class AppPages {
       name: Routes.main,
       page: () => const MainTabScreen(),
       binding: MainTabBinding(),
-    ),
-
-    // 경로 상세 화면
-    GetPage(
-      name: Routes.routeDetail,
-      page: () => const RouteDetailScreen(),
-      binding: RouteDetailBinding(),
-      transition: Transition.native,
-      transitionDuration: const Duration(milliseconds: 300),
-    ),
-
-    // 경로 설정 화면들
-    GetPage(
-      name: Routes.routeSetup,
-      page: () => const RouteSetupScreen(),
-      transition: Transition.rightToLeft,
-      transitionDuration: const Duration(milliseconds: 300),
-    ),
-    GetPage(
-      name: Routes.routeDeparture,
-      page: () => const RouteDepartureScreen(),
-      binding: RouteDepartureBinding(),
-      transition: Transition.rightToLeft,
-      transitionDuration: const Duration(milliseconds: 300),
-    ),
-    GetPage(
-      name: Routes.routeTransfer,
-      page: () => const RouteTransferScreen(),
-      binding: RouteTransferBinding(),
-      transition: Transition.rightToLeft,
-      transitionDuration: const Duration(milliseconds: 300),
-    ),
-    GetPage(
-      name: Routes.routeArrival,
-      page: () => const RouteArrivalScreen(),
-      binding: RouteArrivalBinding(),
-      transition: Transition.rightToLeft,
-      transitionDuration: const Duration(milliseconds: 300),
-    ),
-
-    // 지도 선택 화면
-    GetPage(
-      name: Routes.mapSelection,
-      page: () => const MapSelectionScreen(),
-      binding: MapSelectionBinding(),
-      transition: Transition.native,
-      transitionDuration: const Duration(milliseconds: 300),
     ),
 
     // 위치 검색 화면

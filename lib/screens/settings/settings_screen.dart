@@ -192,7 +192,7 @@ class SettingsScreen extends GetView<SettingsController> {
           title: '집 → 회사 경로',
           subtitle: '출근 시 사용할 경로를 설정하세요',
           value: controller.homeToWorkRoute.value,
-          onTap: controller.changeHomeToWorkRoute,
+          onTap: (){},
         )),
 
         _buildDivider(),
@@ -204,7 +204,7 @@ class SettingsScreen extends GetView<SettingsController> {
           title: '회사 → 집 경로',
           subtitle: '퇴근 시 사용할 경로를 설정하세요',
           value: controller.workToHomeRoute.value,
-          onTap: controller.changeWorkToHomeRoute,
+          onTap: (){},
         )),
       ],
     );

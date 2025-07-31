@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import '../route_setup/route_setup_controller.dart';
 
 class SettingsController extends GetxController {
   final GetStorage _storage = GetStorage();
@@ -495,46 +494,6 @@ class SettingsController extends GetxController {
         ],
       ),
     );
-  }
-
-  // 집→회사 경로 설정
-  void changeHomeToWorkRoute() {
-    _navigateToRouteSetup(true);
-  }
-
-  // 회사→집 경로 설정
-  void changeWorkToHomeRoute() {
-    _navigateToRouteSetup(false);
-  }
-
-
-  // 경로 설정 화면으로 이동
-  void _navigateToRouteSetup(bool isHomeToWork) async {
-    // RouteSetupController를 임시로 등록
-    Get.put(RouteSetupController());
-    
-    // 경로 설정 화면으로 이동
-    final result = await Get.toNamed(
-      '/route-setup',
-      arguments: {'isHomeToWork': isHomeToWork},
-    );
-    
-    // RouteSetupController 제거
-    Get.delete<RouteSetupController>();
-    
-    // 결과가 있으면 경로 업데이트
-    if (result != null && result is String) {
-      if (isHomeToWork) {
-        homeToWorkRoute.value = result;
-      } else {
-        workToHomeRoute.value = result;
-      }
-      
-      // 설정 데이터 다시 로드
-      _loadSettings();
-      
-      print('${isHomeToWork ? "집→회사" : "회사→집"} 경로 설정 완료: $result');
-    }
   }
 
   // 프리미엄 업그레이드
