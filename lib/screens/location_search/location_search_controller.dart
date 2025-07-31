@@ -893,6 +893,25 @@ class LocationSearchController extends GetxController {
                         icon: const Icon(Icons.refresh, color: Colors.grey),
                         tooltip: '새로고침',
                       ),
+                      // 위치 선택 버튼 (온보딩 모드에서만 표시) - 경기도 버스
+                      if (mode.value.isNotEmpty) ...[
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.green[100],
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: IconButton(
+                            onPressed: () => _selectBusStop(busStop),
+                            icon: Icon(
+                              Icons.check,
+                              color: Colors.green[600],
+                              size: 20,
+                            ),
+                            tooltip: '이 정류장 선택',
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                      ],
                       IconButton(
                         onPressed: () => _closeBusArrivalBottomSheet(),
                         icon: const Icon(Icons.close, color: Colors.grey),
@@ -1077,6 +1096,25 @@ class LocationSearchController extends GetxController {
                         icon: const Icon(Icons.refresh, color: Colors.grey),
                         tooltip: '새로고침',
                       ),
+                      // 위치 선택 버튼 (온보딩 모드에서만 표시) - 서울 버스
+                      if (mode.value.isNotEmpty) ...[
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.blue[100],
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: IconButton(
+                            onPressed: () => _selectBusStop(busStop),
+                            icon: Icon(
+                              Icons.check,
+                              color: Colors.blue[600],
+                              size: 20,
+                            ),
+                            tooltip: '이 정류장 선택',
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                      ],
                       IconButton(
                         onPressed: () => _closeBusArrivalBottomSheet(),
                         icon: const Icon(Icons.close, color: Colors.grey),
@@ -1765,6 +1803,25 @@ class LocationSearchController extends GetxController {
                     ),
                   ),
                   const SizedBox(width: 8),
+                  // 위치 선택 버튼 (온보딩 모드에서만 표시)
+                  if (mode.value.isNotEmpty) ...[
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade100,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: IconButton(
+                        onPressed: () => _selectSubwayStation(stationName),
+                        icon: Icon(
+                          Icons.check,
+                          color: Colors.blue.shade600,
+                          size: 20,
+                        ),
+                        tooltip: '이 역 선택',
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
                   IconButton(
                     onPressed: () => _closeSubwayArrivalBottomSheet(),
                     icon: Icon(
@@ -2155,7 +2212,67 @@ class LocationSearchController extends GetxController {
     return cleaned;
   }
 
-  // 위치 선택
+  // 지하철역 선택 (바텀시트에서 호출)
+  void _selectSubwayStation(String stationName) {
+    if (mode.value.isEmpty) return; // 온보딩 모드가 아니면 무시
+    
+    // 지하철역 정보를 바탕으로 호선 정보 구성
+    String lineInfo = '';
+    String code = '';
+    
+    // 현재 지하철 도착정보에서 호선 정보 추출
+    if (subwayArrivals.isNotEmpty) {
+      final uniqueLines = <String>{};
+      for (final arrival in subwayArrivals) {
+        uniqueLines.add(arrival.lineDisplayName);
+      }
+      lineInfo = uniqueLines.join(', ');
+      code = subwayArrivals.first.subwayId;
+    }
+    
+    // 바텀시트 닫기
+    _closeSubwayArrivalBottomSheet();
+    
+    // 선택된 지하철역 정보를 이전 화면으로 반환
+    Get.back(result: {
+      'name': '${stationName}역',
+      'type': 'subway',
+      'lineInfo': lineInfo.isNotEmpty ? lineInfo : '지하철역',
+      'code': code.isNotEmpty ? code : 'SUBWAY',
+    });
+  }
+  
+  // 버스정류장 선택 (바텀시트에서 호출)
+  void _selectBusStop(dynamic busStop) {
+    if (mode.value.isEmpty) return; // 온보딩 모드가 아니면 무시
+    
+    String stationName = '';
+    String lineInfo = '';
+    String code = '';
+    
+    if (busStop is GyeonggiBusStop) {
+      stationName = busStop.stationName;
+      lineInfo = '경기도 버스정류장';
+      code = busStop.stationId;
+    } else if (busStop is SeoulBusStop) {
+      stationName = busStop.stationNm;
+      lineInfo = '서울 버스정류장';
+      code = busStop.stationId;
+    }
+    
+    // 바텀시트 닫기
+    _closeBusArrivalBottomSheet();
+    
+    // 선택된 버스정류장 정보를 이전 화면으로 반환
+    Get.back(result: {
+      'name': stationName,
+      'type': 'bus',
+      'lineInfo': lineInfo,
+      'code': code,
+    });
+  }
+
+  // 위치 선택 (기존 메서드)
   void selectLocation(LocationInfo location) {
     // 선택된 위치 정보를 이전 화면으로 반환
     Get.back(result: {
