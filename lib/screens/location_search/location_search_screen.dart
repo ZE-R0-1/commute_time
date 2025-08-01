@@ -220,7 +220,6 @@ class LocationSearchScreen extends GetView<LocationSearchController> {
           minLevel: 3,
           maxLevel: 3,
           markers: controller.markers,
-          circles: controller.circles, // 검색 반경 원 추가
           onMarkerTap: controller.onMarkerTap, // 마커 탭 이벤트 처리
           onDragChangeCallback: controller.onDragChange, // 드래그 감지 추가
         ),

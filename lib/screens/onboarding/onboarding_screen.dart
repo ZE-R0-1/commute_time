@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import 'onboarding_controller.dart';
-import 'widgets/step_route_setup_new.dart';
+import 'widgets/step_route_setup.dart';
 
 class OnboardingScreen extends GetView<OnboardingController> {
   const OnboardingScreen({super.key});
@@ -14,7 +14,7 @@ class OnboardingScreen extends GetView<OnboardingController> {
         case 0:
           return _buildWelcomeScreen();
         case 1:
-          return const StepRouteSetupNew();
+          return const StepRouteSetup();
         default:
           return _buildWelcomeScreen();
       }

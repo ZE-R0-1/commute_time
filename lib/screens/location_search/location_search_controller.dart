@@ -1,94 +1,47 @@
 import 'dart:async';
-import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
-import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import '../../services/gyeonggi_bus_service.dart';
-import '../../services/seoul_bus_service.dart';
-import '../../services/bus_arrival_service.dart';
-import '../../app/services/subway_service.dart';
+import '../../app/services/bus_search_service.dart';
+import '../../app/services/gyeonggi_bus_service.dart';
+import '../../app/services/map_search_service.dart';
+import '../../app/services/seoul_bus_service.dart';
+import '../../app/services/subway_search_service.dart';
+import 'widgets/transport_bottom_sheet.dart';
 
 class LocationSearchController extends GetxController {
-  // 카카오맵 관련
+  // 카카오맵 컨트롤러
   KakaoMapController? mapController;
   
-  // 검색어
+  // 검색 관련
   final RxString searchQuery = ''.obs;
-  
-  // 선택된 카테고리 (0: 지하철, 1: 버스)
-  final RxInt selectedCategory = 0.obs;
-  
-  // 검색 결과
-  final RxList<LocationInfo> searchResults = <LocationInfo>[].obs;
-  
-  // 주소검색 결과
-  final RxList<AddressInfo> addressSearchResults = <AddressInfo>[].obs;
-  
-  // 로딩 상태
+  final RxInt selectedCategory = 0.obs; // 0: 지하철, 1: 버스
   final RxBool isLoading = false.obs;
-  
-  // 검색 결과 표시 여부
   final RxBool showSearchResults = false.obs;
   
-  // 현재 모드 (departure, transfer, arrival)
-  final RxString mode = ''.obs;
+  // 검색 결과
+  final RxList<AddressInfo> addressSearchResults = <AddressInfo>[].obs;
   
-  // 화면 타이틀
+  // 화면 설정
+  final RxString mode = ''.obs;
   final RxString title = ''.obs;
   
-  // 마커 관련
+  // 지도 마커 및 상태
   final RxList<Marker> markers = <Marker>[].obs;
+  final RxBool isBottomSheetVisible = false.obs;
+  final RxBool showResearchButton = false.obs;
+  LatLng? lastDragPosition;
   
-  // 서클 관련 (검색 반경 표시)
-  final RxList<Circle> circles = <Circle>[].obs;
+  // 데이터 매핑
+  final Map<String, SubwayStationInfo> subwayStationMap = {};
+  final Map<String, GyeonggiBusStop> gyeonggiBusStopMap = {};
+  final Map<String, SeoulBusStop> seoulBusStopMap = {};
   
   // 디바운스 타이머
   Timer? _searchDebounceTimer;
 
-  // 선택된 버스정류장 정보
-  final Rx<GyeonggiBusStop?> selectedBusStop = Rx<GyeonggiBusStop?>(null);
-  final Rx<SeoulBusStop?> selectedSeoulBusStop = Rx<SeoulBusStop?>(null);
-  
-  // 버스 도착정보
-  final RxList<BusArrivalInfo> busArrivalInfos = <BusArrivalInfo>[].obs;
-  final RxList<SeoulBusArrival> seoulBusArrivalInfos = <SeoulBusArrival>[].obs;
-  
-  // 지하철 도착정보
-  final RxList<SubwayArrival> subwayArrivalInfos = <SubwayArrival>[].obs;
-  final RxString selectedSubwayStation = ''.obs;
-  final RxList<SubwayArrival> subwayArrivals = <SubwayArrival>[].obs;
-  final RxBool isLoadingSubwayArrival = false.obs;
-  final RxString subwayArrivalErrorMessage = ''.obs;
-  
-  // 바텀시트 로딩 상태
-  final RxBool isBottomSheetLoading = false.obs;
-  
-  // 바텀시트 표시 상태
-  final RxBool isBottomSheetVisible = false.obs;
-
-  // 재검색 버튼 표시 상태
-  final RxBool showResearchButton = false.obs;
-
-  // 마지막 드래그 위치
-  LatLng? lastDragPosition;
-
-  // 마커ID와 버스정류장 정보 매핑 (경기도)
-  final Map<String, GyeonggiBusStop> gyeonggiBusStopMap = <String, GyeonggiBusStop>{};
-  
-  // 마커ID와 서울 버스정류장 정보 매핑
-  final Map<String, SeoulBusStop> seoulBusStopMap = <String, SeoulBusStop>{};
-  
-  // 마커ID와 지하철역 정보 매핑 (역명 저장)
-  final Map<String, String> subwayStationMap = <String, String>{};
-
-
   @override
   void onInit() {
     super.onInit();
-    
-    // arguments에서 모드와 타이틀 받기
     final args = Get.arguments as Map<String, dynamic>? ?? {};
     mode.value = args['mode'] ?? 'departure';
     title.value = args['title'] ?? '위치 검색';
@@ -97,24 +50,23 @@ class LocationSearchController extends GetxController {
   @override
   void onClose() {
     _searchDebounceTimer?.cancel();
-    // 맵 컨트롤러 정리
     mapController = null;
     markers.clear();
     super.onClose();
   }
 
+  // 카카오맵 초기화
   void onMapCreated(KakaoMapController controller) {
     mapController = controller;
     print('🗺️ 카카오맵 초기화 완료');
-    print('🔍 지도 컨트롤러 상태: 정상');
     
-    // 초기화 완료 후 기본 선택된 카테고리(지하철역) 마커 표시
+    // 초기 지하철역 검색
     if (selectedCategory.value == 0) {
-      _searchSubwayStationsWithRestAPI();
+      _searchSubwayStations();
     }
   }
 
-  // 주소검색 실행
+  // 주소 검색 실행
   void performAddressSearch(String query) {
     if (query.isEmpty) {
       addressSearchResults.clear();
@@ -126,104 +78,23 @@ class LocationSearchController extends GetxController {
     isLoading.value = true;
     showSearchResults.value = true;
 
-    // 디바운스 타이머 설정
     _searchDebounceTimer?.cancel();
     _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
-      _searchAddressWithAPI(query);
+      _searchAddresses(query);
     });
   }
 
-  // 카카오 주소검색 API 호출
-  Future<void> _searchAddressWithAPI(String query) async {
-    print('🔍 주소검색 API 호출 시작 - 쿼리: "$query"');
-    
+  // 주소 검색 (MapSearchService 사용)
+  Future<void> _searchAddresses(String query) async {
     try {
-      final apiKey = dotenv.env['KAKAO_REST_API_KEY'] ?? '';
-      print('🔑 API 키 확인: ${apiKey.isNotEmpty ? "존재함 (${apiKey.substring(0, 5)}...)" : "없음"}');
-      
-      if (apiKey.isEmpty) {
-        print('❌ 카카오 REST API 키가 없습니다.');
-        addressSearchResults.clear();
-        return;
-      }
-
-      // 키워드 검색과 주소 검색을 모두 시도
-      await _performKeywordSearch(query, apiKey);
-      
-    } catch (e, stackTrace) {
-      print('❌ 주소검색 중 오류 발생: $e');
-      print('📍 스택 트레이스: $stackTrace');
+      final results = await MapSearchService.searchPlaces(query);
+      addressSearchResults.value = results;
+      print('✅ 주소 검색 완료: ${results.length}개');
+    } catch (e) {
+      print('❌ 주소 검색 오류: $e');
       addressSearchResults.clear();
     } finally {
       isLoading.value = false;
-    }
-  }
-
-  // 키워드 검색 수행
-  Future<void> _performKeywordSearch(String query, String apiKey) async {
-    try {
-      final url = Uri.parse(
-        'https://dapi.kakao.com/v2/local/search/keyword.json'
-        '?query=${Uri.encodeComponent(query)}'
-        '&page=1'
-        '&size=10'
-      );
-
-      print('🔍 키워드 검색 API 요청 URL: $url');
-
-      final response = await http.get(
-        url,
-        headers: {
-          'Authorization': 'KakaoAK $apiKey',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 10));
-
-      print('📡 키워드 검색 응답 상태: ${response.statusCode}');
-      print('📄 응답 내용 (첫 500자): ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final documents = data['documents'] as List;
-        
-        print('✅ 키워드 검색 완료! 총 ${documents.length}개의 결과 발견');
-        
-        List<AddressInfo> results = [];
-        for (int i = 0; i < documents.length; i++) {
-          final doc = documents[i];
-          final lat = double.parse(doc['y'].toString());
-          final lng = double.parse(doc['x'].toString());
-          
-          results.add(AddressInfo(
-            placeName: doc['place_name'] ?? '',
-            addressName: doc['address_name'] ?? '',
-            roadAddressName: doc['road_address_name'] ?? '',
-            latitude: lat,
-            longitude: lng,
-          ));
-          
-          print('${i + 1}. ${doc['place_name'] ?? 'N/A'}');
-          print('   - 주소: ${doc['address_name'] ?? 'N/A'}');
-          print('   - 도로명주소: ${doc['road_address_name'] ?? 'N/A'}');
-          print('   - 카테고리: ${doc['category_name'] ?? 'N/A'}');
-          print('   - 좌표: ($lat, $lng)');
-          print('');
-        }
-        
-        print('🔄 결과를 UI에 업데이트 중...');
-        addressSearchResults.value = results;
-        print('✅ UI 업데이트 완료! 결과 개수: ${addressSearchResults.length}');
-        
-      } else {
-        print('❌ 키워드 검색 API 호출 실패: ${response.statusCode}');
-        print('📄 응답 내용: ${response.body}');
-        addressSearchResults.clear();
-      }
-
-    } catch (e, stackTrace) {
-      print('❌ 키워드 검색 중 오류 발생: $e');
-      print('📍 스택 트레이스: $stackTrace');
-      addressSearchResults.clear();
     }
   }
 
@@ -231,1457 +102,207 @@ class LocationSearchController extends GetxController {
   void selectAddress(AddressInfo address) async {
     if (mapController == null) return;
     
-    print('📍 주소 선택됨: ${address.placeName}');
-    print('🗺️ 지도 중심을 (${address.latitude}, ${address.longitude})로 이동');
+    print('📍 주소 선택: ${address.placeName}');
     
-    // 선택된 주소로 지도 중심 이동
     await mapController!.setCenter(LatLng(address.latitude, address.longitude));
-    
-    // 검색 결과 숨기기
     showSearchResults.value = false;
     addressSearchResults.clear();
-    
-    print('✅ 지도 이동 완료 및 검색 결과 숨김');
-    
-    // 화면 종료하지 않고 여기서 끝 (사용자가 계속 지도를 사용할 수 있음)
   }
-
-  // 검색 실행 (기존 로직 - 현재는 사용하지 않음)
-  void performSearch(String query) {
-    if (query.isEmpty) {
-      searchResults.clear();
-      return;
-    }
-
-    searchQuery.value = query;
-    isLoading.value = true;
-
-    // 실제 구현에서는 API 호출
-    Future.delayed(const Duration(milliseconds: 500), () {
-      List<LocationInfo> allResults = [
-        // 지하철역 데이터
-        LocationInfo(
-          name: '강남역',
-          type: 'subway',
-          lineInfo: '2호선, 신분당선',
-          code: '222',
-          latitude: 37.4980,
-          longitude: 127.0276,
-        ),
-        LocationInfo(
-          name: '역삼역',
-          type: 'subway',
-          lineInfo: '2호선',
-          code: '223',
-          latitude: 37.5002,
-          longitude: 127.0364,
-        ),
-        LocationInfo(
-          name: '선릉역',
-          type: 'subway',
-          lineInfo: '2호선, 분당선',
-          code: '224',
-          latitude: 37.5045,
-          longitude: 127.0487,
-        ),
-        LocationInfo(
-          name: '서초역',
-          type: 'subway',
-          lineInfo: '2호선',
-          code: '225',
-          latitude: 37.4837,
-          longitude: 127.0104,
-        ),
-        
-        // 버스정류장 데이터
-        LocationInfo(
-          name: '강남역.강남구청',
-          type: 'bus',
-          lineInfo: '간선 146, 472',
-          code: '23-180',
-          latitude: 37.4979,
-          longitude: 127.0265,
-        ),
-        LocationInfo(
-          name: '역삼역.포스코센터',
-          type: 'bus',
-          lineInfo: '지선 3412, 4319',
-          code: '23-181',
-          latitude: 37.5001,
-          longitude: 127.0355,
-        ),
-        LocationInfo(
-          name: '선릉역.엘타워',
-          type: 'bus',
-          lineInfo: '간선 240, 341',
-          code: '23-182',
-          latitude: 37.5046,
-          longitude: 127.0478,
-        ),
-      ];
-
-      // 카테고리에 따른 필터링
-      List<LocationInfo> filteredResults;
-      if (selectedCategory.value == 0) {
-        // 지하철만
-        filteredResults = allResults
-            .where((station) => station.type == 'subway' && station.name.contains(query))
-            .toList();
-      } else {
-        // 버스만
-        filteredResults = allResults
-            .where((station) => station.type == 'bus' && station.name.contains(query))
-            .toList();
-      }
-
-      searchResults.value = filteredResults;
-      isLoading.value = false;
-    });
-  }
-
 
   // 카테고리 변경
   void changeCategory(int category) {
-    if (selectedCategory.value == category) return; // 같은 카테고리 선택 시 무시
+    if (selectedCategory.value == category) return;
     
     selectedCategory.value = category;
-    
-    // 검색 결과 숨기기
     showSearchResults.value = false;
     addressSearchResults.clear();
     
-    // 지하철역 카테고리 선택 시 REST API로 지하철역 검색
     if (category == 0) {
-      _searchSubwayStationsWithRestAPI();
-    }
-    
-    // 버스정류장 카테고리 선택 시 REST API로 버스정류장 검색
-    if (category == 1) {
-      _searchBusStopsWithRestAPI();
+      _searchSubwayStations();
+    } else {
+      _searchBusStops();
     }
   }
 
-  // 실제 카카오 API로 지하철역 검색
+  // 지하철역 검색
   Future<void> _searchSubwayStations() async {
-    if (mapController == null) {
-      print('❌ 맵 컨트롤러가 초기화되지 않았습니다.');
-      return;
-    }
-
-    try {
-      print('🚇 지하철역 카테고리 선택됨 - 카카오 API 검색 시작');
-      
-      // 현재 맵의 중심 좌표 가져오기
-      final center = await mapController!.getCenter();
-      print('📍 현재 맵 중심 좌표: (${center.latitude}, ${center.longitude})');
-
-      // 카테고리 검색 요청 생성 (SW8 = 지하철역)
-      final request = CategorySearchRequest(
-        categoryGroupCode: CategoryType.sw8, // 지하철역
-        y: center.latitude,
-        x: center.longitude,
-        radius: 2000, // 2km 반경
-        sort: SortBy.distance,
-        page: 1,
-        size: 15, // 최대 15개
-        useMapCenter: true,
-        useMapBounds: true,
-      );
-
-      print('🔍 검색 요청: ${request.toString()}');
-      print('⏳ API 호출 시작...');
-
-      // API 호출 with timeout
-      final result = await mapController!.categorySearch(request).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          print('⏰ API 호출 타임아웃 (10초)');
-          throw TimeoutException('카테고리 검색 타임아웃', const Duration(seconds: 10));
-        },
-      );
-      
-      print('✅ 검색 완료! 총 ${result.list.length}개의 지하철역 발견');
-      
-      if (result.list.isEmpty) {
-        print('📭 검색 결과가 없습니다. 다른 카테고리로 테스트해보겠습니다.');
-        await _testOtherCategories();
-        return;
-      }
-      
-      print('📋 지하철역 목록:');
-      
-      // 검색 결과 출력
-      for (int i = 0; i < result.list.length; i++) {
-        final station = result.list[i];
-        print('${i + 1}. ${station.placeName}');
-        print('   - 주소: ${station.addressName}');
-        print('   - 도로명주소: ${station.roadAddressName}');
-        print('   - 카테고리: ${station.categoryName}');
-        print('   - 거리: ${station.distance}m');
-        print('   - 좌표: (${station.y}, ${station.x})');
-        print('   - ID: ${station.id}');
-        if (station.phone?.isNotEmpty == true) {
-          print('   - 전화번호: ${station.phone}');
-        }
-        print('');
-      }
-
-    } on TimeoutException catch (e) {
-      print('❌ API 호출 타임아웃: $e');
-      print('🔄 대안으로 다른 카테고리 테스트를 시도합니다.');
-      await _testOtherCategories();
-    } catch (e, stackTrace) {
-      print('❌ 지하철역 검색 중 오류 발생: $e');
-      print('📍 스택 트레이스: $stackTrace');
-      print('🔄 대안으로 다른 카테고리 테스트를 시도합니다.');
-      await _testOtherCategories();
-    }
-  }
-
-  // REST API로 지하철역 검색 (카카오맵 플러그인 대신)
-  Future<void> _searchSubwayStationsWithRestAPI() async {
-    if (mapController == null) {
-      print('❌ 맵 컨트롤러가 초기화되지 않았습니다.');
-      return;
-    }
-
-    try {
-      print('🚇 지하철역 카테고리 선택됨 - REST API 검색 시작');
-      
-      // 현재 맵의 중심 좌표 가져오기
-      final center = await mapController!.getCenter();
-      print('📍 현재 맵 중심 좌표: (${center.latitude}, ${center.longitude})');
-
-
-      // 카카오 REST API로 카테고리 검색
-      final apiKey = dotenv.env['KAKAO_REST_API_KEY'] ?? '';
-      if (apiKey.isEmpty) {
-        print('❌ 카카오 REST API 키가 없습니다.');
-        return;
-      }
-
-      final url = Uri.parse(
-        'https://dapi.kakao.com/v2/local/search/category.json'
-        '?category_group_code=SW8'
-        '&x=${center.longitude}'
-        '&y=${center.latitude}'
-        '&radius=500'
-        '&sort=distance'
-        '&page=1'
-        '&size=15'
-      );
-
-      print('🔍 API 요청 URL: $url');
-
-      final response = await http.get(
-        url,
-        headers: {
-          'Authorization': 'KakaoAK $apiKey',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 10));
-
-      print('📡 HTTP 응답 상태: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final documents = data['documents'] as List;
-        
-        print('✅ 검색 완료! 총 ${documents.length}개의 지하철역 발견');
-        
-        // 기존 마커 제거
-        markers.clear();
-        await mapController!.clearMarker();
-        
-        // 기존 지하철역 매핑 초기화
-        subwayStationMap.clear();
-        
-        // 검색 결과를 마커로 표시
-        for (int i = 0; i < documents.length; i++) {
-          final station = documents[i];
-          final lat = double.parse(station['y'].toString());
-          final lng = double.parse(station['x'].toString());
-          final stationName = station['place_name'] as String;
-          
-          // 마커 생성 (기본 마커)
-          final markerId = 'subway_${station['id']}';
-          final marker = Marker(
-            markerId: markerId,
-            latLng: LatLng(lat, lng),
-          );
-          
-          markers.add(marker);
-          
-          // 마커ID와 지하철역 이름 매핑 저장 (역명만 추출)
-          final cleanStationName = _cleanStationName(stationName);
-          subwayStationMap[markerId] = cleanStationName;
-          
-          print('${i + 1}. $stationName');
-          print('   - 주소: ${station['address_name']}');
-          print('   - 거리: ${station['distance']}m');
-          print('   - 좌표: (${lat}, ${lng})');
-          print('');
-        }
-        
-        // 지도에 마커 추가
-        if (markers.isNotEmpty) {
-          await mapController!.addMarker(markers: markers);
-          print('🗺️ ${markers.length}개의 지하철역 마커를 지도에 표시했습니다.');
-        }
-        
-      } else {
-        print('❌ API 호출 실패: ${response.statusCode}');
-        print('📄 응답 내용: ${response.body}');
-      }
-
-    } catch (e, stackTrace) {
-      print('❌ REST API 지하철역 검색 중 오류 발생: $e');
-      print('📍 스택 트레이스: $stackTrace');
-    }
-  }
-
-
-  // 다른 카테고리로 테스트 (은행, 편의점 등)
-  Future<void> _testOtherCategories() async {
-    if (mapController == null) return;
-
-    final testCategories = [
-      {'type': CategoryType.bk9, 'name': '은행'},
-      {'type': CategoryType.cs2, 'name': '편의점'},
-      {'type': CategoryType.mt1, 'name': '대형마트'},
-    ];
-
-    for (final category in testCategories) {
-      try {
-        print('🧪 ${category['name']} 카테고리 테스트 중...');
-        
-        final center = await mapController!.getCenter();
-        final request = CategorySearchRequest(
-          categoryGroupCode: category['type'] as CategoryType,
-          y: center.latitude,
-          x: center.longitude,
-          radius: 2000,
-          sort: SortBy.distance,
-          page: 1,
-          size: 5,
-          useMapCenter: true,
-          useMapBounds: true,
-        );
-
-        final result = await mapController!.categorySearch(request).timeout(
-          const Duration(seconds: 5),
-        );
-
-        print('✅ ${category['name']} 검색 결과: ${result.list.length}개');
-        
-        if (result.list.isNotEmpty) {
-          for (int i = 0; i < result.list.length && i < 3; i++) {
-            final place = result.list[i];
-            print('  ${i + 1}. ${place.placeName} (${place.distance}m)');
-          }
-          break; // 성공하면 테스트 중단
-        }
-        
-      } catch (e) {
-        print('❌ ${category['name']} 테스트 실패: $e');
-        continue;
-      }
-      
-      // 카테고리 간 딜레이
-      await Future.delayed(const Duration(milliseconds: 500));
-    }
-  }
-
-  // 특정 위치에서 지하철역 검색 (드래그 완료 시 사용)
-  Future<void> _searchSubwayStationsAtLocation(LatLng center) async {
     if (mapController == null) return;
 
     try {
-      print('🚇 새 위치에서 지하철역 검색 시작');
-      
-
-      // 카카오 REST API로 카테고리 검색
-      final apiKey = dotenv.env['KAKAO_REST_API_KEY'] ?? '';
-      if (apiKey.isEmpty) {
-        print('❌ 카카오 REST API 키가 없습니다.');
-        return;
-      }
-
-      final url = Uri.parse(
-        'https://dapi.kakao.com/v2/local/search/category.json'
-        '?category_group_code=SW8'
-        '&x=${center.longitude}'
-        '&y=${center.latitude}'
-        '&radius=500'
-        '&sort=distance'
-        '&page=1'
-        '&size=15'
-      );
-
-      final response = await http.get(
-        url,
-        headers: {
-          'Authorization': 'KakaoAK $apiKey',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final documents = data['documents'] as List;
-        
-        print('✅ 새 위치 검색 완료! 총 ${documents.length}개의 지하철역 발견');
-        
-        // 기존 마커 제거
-        markers.clear();
-        await mapController!.clearMarker();
-        
-        // 검색 결과를 마커로 표시
-        for (int i = 0; i < documents.length; i++) {
-          final station = documents[i];
-          final lat = double.parse(station['y'].toString());
-          final lng = double.parse(station['x'].toString());
-          
-          // 마커 생성 (기본 마커)
-          final marker = Marker(
-            markerId: 'subway_${station['id']}',
-            latLng: LatLng(lat, lng),
-          );
-          
-          markers.add(marker);
-        }
-        
-        // 지도에 마커 추가
-        if (markers.isNotEmpty) {
-          await mapController!.addMarker(markers: markers);
-          print('🗺️ ${markers.length}개의 지하철역 마커를 새 위치에 표시했습니다.');
-        }
-        
-      } else {
-        print('❌ 새 위치 API 호출 실패: ${response.statusCode}');
-      }
-
-    } catch (e, stackTrace) {
-      print('❌ 새 위치 지하철역 검색 중 오류 발생: $e');
-    }
-  }
-
-  // REST API로 버스정류장 검색 (경기도 API + 서울 API)
-  Future<void> _searchBusStopsWithRestAPI() async {
-    if (mapController == null) {
-      print('❌ 맵 컨트롤러가 초기화되지 않았습니다.');
-      return;
-    }
-
-    try {
-      print('🚌 버스정류장 카테고리 선택됨 - 통합 검색 시작');
-      
-      // 현재 맵의 중심 좌표 가져오기
       final center = await mapController!.getCenter();
-      print('📍 현재 맵 중심 좌표: (${center.latitude}, ${center.longitude})');
-
-
-      // 기존 마커 제거
-      markers.clear();
-      await mapController!.clearMarker();
-
-      // 1. 경기도 버스정류장 API 검색
-      await _searchGyeonggiBusStops(center);
-
-      // 2. 서울 버스정류장 API 검색
-      await _searchSeoulBusStops(center);
-
-      // 지도에 마커 추가
-      if (markers.isNotEmpty) {
-        await mapController!.addMarker(markers: markers);
-        print('🗺️ 총 ${markers.length}개의 버스정류장 마커를 지도에 표시했습니다.');
-      }
-
-    } catch (e, stackTrace) {
-      print('❌ REST API 버스정류장 검색 중 오류 발생: $e');
-      print('📍 스택 트레이스: $stackTrace');
-    }
-  }
-
-  // 경기도 버스정류장 API 검색
-  Future<void> _searchGyeonggiBusStops(LatLng center) async {
-    try {
-      print('🏛️ 경기도 버스정류장 API 검색 시작');
+      final stations = await SubwaySearchService.searchNearbyStations(center);
       
-      final gyeonggiBusStops = await GyeonggiBusService.getBusStopsByLocation(
-        center.latitude, 
-        center.longitude,
-        radius: 500, // 500m 반경
-      );
-
-      print('✅ 경기도 API 검색 완료! 총 ${gyeonggiBusStops.length}개의 버스정류장 발견');
-
-      for (int i = 0; i < gyeonggiBusStops.length; i++) {
-        final busStop = gyeonggiBusStops[i];
-        
-        // 마커 생성 (경기도 버스정류장용)
-        final markerId = 'gyeonggi_bus_${busStop.stationId}';
-        final marker = Marker(
-          markerId: markerId,
-          latLng: LatLng(busStop.y, busStop.x),
-        );
-        
-        markers.add(marker);
-        
-        // 마커ID와 버스정류장 정보 매핑 저장 (경기도)
-        gyeonggiBusStopMap[markerId] = busStop;
-        
-        print('${i + 1}. ${busStop.stationName}');
-        print('   - ID: ${busStop.stationId}');
-        print('   - 지역: ${busStop.regionName}');
-        print('   - 좌표: (${busStop.y}, ${busStop.x})');
-        if (busStop.mobileNo.isNotEmpty) {
-          print('   - 모바일번호: ${busStop.mobileNo}');
-        }
-        print('');
-      }
-
-    } catch (e, stackTrace) {
-      print('❌ 경기도 버스정류장 API 검색 중 오류: $e');
-      print('📍 스택 트레이스: $stackTrace');
+      await _updateSubwayMarkers(stations);
+      print('🚇 지하철역 마커 업데이트 완료: ${stations.length}개');
+    } catch (e) {
+      print('❌ 지하철역 검색 오류: $e');
     }
   }
 
-  // 서울 버스정류장 API 검색
-  Future<void> _searchSeoulBusStops(LatLng center) async {
+  // 지하철 마커 업데이트
+  Future<void> _updateSubwayMarkers(List<SubwayStationInfo> stations) async {
+    if (mapController == null) return;
+
+    // 기존 마커 제거
+    await mapController!.clearMarker();
+    markers.clear();
+    subwayStationMap.clear();
+
+    // 새 마커 생성
+    for (final station in stations) {
+      final markerId = 'subway_${station.id}';
+      final marker = Marker(
+        markerId: markerId,
+        latLng: LatLng(station.latitude, station.longitude),
+      );
+      
+      markers.add(marker);
+      subwayStationMap[markerId] = station;
+    }
+
+    // 지도에 마커 추가
+    if (markers.isNotEmpty) {
+      await mapController!.addMarker(markers: markers);
+    }
+  }
+
+  // 버스정류장 검색
+  Future<void> _searchBusStops() async {
+    if (mapController == null) return;
+
     try {
-      final seoulBusStops = await SeoulBusService.getBusStopsByLocation(
-        center.latitude, 
-        center.longitude,
-        radius: 500, // 500m 반경
-      );
-
-      for (int i = 0; i < seoulBusStops.length; i++) {
-        final busStop = seoulBusStops[i];
-        
-        // 마커 생성 (서울 버스정류장용)
-        final markerId = 'seoul_bus_${busStop.stationId}';
-        final marker = Marker(
-          markerId: markerId,
-          latLng: LatLng(busStop.gpsY, busStop.gpsX),
-        );
-        
-        markers.add(marker);
-        
-        // 마커ID와 버스정류장 정보 매핑 저장 (서울)
-        seoulBusStopMap[markerId] = busStop;
-      }
-
-    } catch (e, stackTrace) {
-      print('❌ 서울 버스정류장 API 검색 중 오류: $e');
-      print('📍 스택 트레이스: $stackTrace');
+      final center = await mapController!.getCenter();
+      final result = await BusSearchService.searchNearbyBusStops(center);
+      
+      await _updateBusMarkers(result);
+      print('🚌 버스정류장 마커 업데이트 완료: ${result.totalCount}개');
+    } catch (e) {
+      print('❌ 버스정류장 검색 오류: $e');
     }
   }
 
+  // 버스 마커 업데이트
+  Future<void> _updateBusMarkers(BusSearchResult result) async {
+    if (mapController == null) return;
 
+    // 기존 마커 제거
+    await mapController!.clearMarker();
+    markers.clear();
+    gyeonggiBusStopMap.clear();
+    seoulBusStopMap.clear();
 
+    // 경기도 버스정류장 마커
+    for (final busStop in result.gyeonggiBusStops) {
+      final markerId = 'gyeonggi_bus_${busStop.stationId}';
+      final marker = Marker(
+        markerId: markerId,
+        latLng: LatLng(busStop.y, busStop.x),
+      );
+      
+      markers.add(marker);
+      gyeonggiBusStopMap[markerId] = busStop;
+    }
 
+    // 서울 버스정류장 마커
+    for (final busStop in result.seoulBusStops) {
+      final markerId = 'seoul_bus_${busStop.stationId}';
+      final marker = Marker(
+        markerId: markerId,
+        latLng: LatLng(busStop.gpsY, busStop.gpsX),
+      );
+      
+      markers.add(marker);
+      seoulBusStopMap[markerId] = busStop;
+    }
 
-  // 마커 탭 이벤트 처리
+    // 지도에 마커 추가
+    if (markers.isNotEmpty) {
+      await mapController!.addMarker(markers: markers);
+    }
+  }
+
+  // 마커 탭 이벤트
   void onMarkerTap(String markerId, LatLng latLng, int zoomLevel) {
-    print('🖱️ 마커 탭됨: $markerId');
-    
-    // 바텀시트가 이미 열려있으면 무시
     if (isBottomSheetVisible.value) {
       print('⚠️ 바텀시트가 이미 열려있어서 마커 탭을 무시합니다.');
       return;
     }
-    
-    // 지하철역 마커인지 확인
+
+    print('🖱️ 마커 탭: $markerId');
+
     if (markerId.startsWith('subway_')) {
-      final stationName = subwayStationMap[markerId];
-      if (stationName != null) {
-        selectedSubwayStation.value = stationName;
-        _showSubwayArrivalBottomSheet(stationName);
-      }
-    }
-    // 버스정류장 마커인지 확인
-    else if (markerId.startsWith('gyeonggi_bus_')) {
-      final busStop = gyeonggiBusStopMap[markerId];
-      if (busStop != null) {
-        selectedBusStop.value = busStop;
-        _showBusArrivalBottomSheet(busStop);
-      }
+      _handleSubwayMarkerTap(markerId);
+    } else if (markerId.startsWith('gyeonggi_bus_')) {
+      _handleGyeonggiBusMarkerTap(markerId);
     } else if (markerId.startsWith('seoul_bus_')) {
-      final seoulBusStop = seoulBusStopMap[markerId];
-      if (seoulBusStop != null) {
-        _showSeoulBusBottomSheet(seoulBusStop);
-      }
+      _handleSeoulBusMarkerTap(markerId);
     }
   }
 
-  // 버스 도착정보 바텀시트 표시
-  void _showBusArrivalBottomSheet(GyeonggiBusStop busStop) {
-    // 바텀시트 표시 시 지도 드래그 비활성화
+  // 지하철 마커 탭 처리
+  void _handleSubwayMarkerTap(String markerId) {
+    final station = subwayStationMap[markerId];
+    if (station == null) return;
+
     _setMapDraggable(false);
     isBottomSheetVisible.value = true;
-    
-    Get.bottomSheet(
-      Container(
-        height: Get.height * 0.6,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        child: Column(
-          children: [
-            // 핸들바
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              width: 50,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            
-            // 정류장 정보 헤더
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.green[50],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.directions_bus,
-                      color: Colors.green[600],
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          busStop.stationName,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          busStop.regionName,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        onPressed: () => _refreshBusArrivalInfo(),
-                        icon: const Icon(Icons.refresh, color: Colors.grey),
-                        tooltip: '새로고침',
-                      ),
-                      // 위치 선택 버튼 (온보딩 모드에서만 표시) - 경기도 버스
-                      if (mode.value.isNotEmpty) ...[
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.green[100],
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: IconButton(
-                            onPressed: () => _selectBusStop(busStop),
-                            icon: Icon(
-                              Icons.check,
-                              color: Colors.green[600],
-                              size: 20,
-                            ),
-                            tooltip: '이 정류장 선택',
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                      ],
-                      IconButton(
-                        onPressed: () => _closeBusArrivalBottomSheet(),
-                        icon: const Icon(Icons.close, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            
-            // 구분선
-            Divider(color: Colors.grey[200], height: 1),
-            
-            // 도착정보 리스트
-            Expanded(
-              child: Obx(() {
-                if (isBottomSheetLoading.value) {
-                  return const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text(
-                          '버스 도착정보를 불러오는 중...',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                
-                if (busArrivalInfos.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          size: 48,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          '현재 도착 예정인 버스가 없습니다',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                
-                return ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: busArrivalInfos.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final info = busArrivalInfos[index];
-                    return _buildBusArrivalCard(info);
-                  },
-                );
-              }),
-            ),
-          ],
-        ),
-      ),
-      isScrollControlled: true,
-      isDismissible: true,
-      enableDrag: true,
-    ).then((_) {
-      // 바텀시트가 닫힐 때만 지도 드래그 재활성화 (Get.back 호출 안함)
-      if (isBottomSheetVisible.value) {
+
+    TransportBottomSheet.showSubwayArrival(
+      stationName: station.cleanStationName,
+      mode: mode.value,
+      onClose: () {
         isBottomSheetVisible.value = false;
         _setMapDraggable(true);
-      }
-    });
-    
-    // 바텀시트 표시 후 도착정보 로드
-    _loadBusArrivalInfo(busStop.stationId);
+      },
+      onSelect: (stationName) => _selectSubwayStation(station),
+    );
   }
-  
-  // 서울 버스정류장 바텀시트 표시
-  void _showSeoulBusBottomSheet(SeoulBusStop busStop) {
-    // 바텀시트 표시 시 지도 드래그 비활성화
+
+  // 경기도 버스 마커 탭 처리
+  void _handleGyeonggiBusMarkerTap(String markerId) {
+    final busStop = gyeonggiBusStopMap[markerId];
+    if (busStop == null) return;
+
     _setMapDraggable(false);
     isBottomSheetVisible.value = true;
-    selectedSeoulBusStop.value = busStop;
-    
-    Get.bottomSheet(
-      Container(
-        height: Get.height * 0.6,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        child: Column(
-          children: [
-            // 핸들바
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              width: 50,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            
-            // 정류장 정보 헤더
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.directions_bus,
-                      color: Colors.blue[600],
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          busStop.stationNm,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${busStop.regionName} • ${busStop.stationId}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        if (busStop.stationTp == '1') ...[
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.orange[100],
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '공항버스',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.orange[700],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        onPressed: () => _refreshSeoulBusArrivalInfo(),
-                        icon: const Icon(Icons.refresh, color: Colors.grey),
-                        tooltip: '새로고침',
-                      ),
-                      // 위치 선택 버튼 (온보딩 모드에서만 표시) - 서울 버스
-                      if (mode.value.isNotEmpty) ...[
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.blue[100],
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: IconButton(
-                            onPressed: () => _selectBusStop(busStop),
-                            icon: Icon(
-                              Icons.check,
-                              color: Colors.blue[600],
-                              size: 20,
-                            ),
-                            tooltip: '이 정류장 선택',
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                      ],
-                      IconButton(
-                        onPressed: () => _closeBusArrivalBottomSheet(),
-                        icon: const Icon(Icons.close, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            
-            // 구분선
-            Divider(color: Colors.grey[200], height: 1),
-            
-            // 서울 버스 도착정보 리스트
-            Expanded(
-              child: Obx(() {
-                if (isBottomSheetLoading.value) {
-                  return const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text(
-                          '서울 버스 도착정보를 불러오는 중...',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                
-                if (seoulBusArrivalInfos.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          size: 48,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          '현재 도착 예정인 버스가 없습니다',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                
-                return ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: seoulBusArrivalInfos.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final info = seoulBusArrivalInfos[index];
-                    return _buildSeoulBusArrivalCard(info);
-                  },
-                );
-              }),
-            ),
-          ],
-        ),
-      ),
-      isScrollControlled: true,
-      isDismissible: true,
-      enableDrag: true,
-    ).then((_) {
-      // 바텀시트가 닫힐 때만 지도 드래그 재활성화
-      if (isBottomSheetVisible.value) {
+
+    TransportBottomSheet.showGyeonggiBusArrival(
+      busStop: busStop,
+      mode: mode.value,
+      onClose: () {
         isBottomSheetVisible.value = false;
         _setMapDraggable(true);
-      }
-    });
-    
-    // 바텀시트 표시 후 서울 도착정보 로드
-    _loadSeoulBusArrivalInfo('23', busStop.stationId);
-  }
-
-  // 바텀시트 닫기 및 지도 드래그 재활성화
-  void _closeBusArrivalBottomSheet() {
-    if (isBottomSheetVisible.value) {
-      isBottomSheetVisible.value = false;
-      _setMapDraggable(true);
-      Get.back();
-    }
-  }
-  
-  // 지도 드래그 활성화/비활성화 설정
-  void _setMapDraggable(bool draggable) {
-    if (mapController != null) {
-      mapController!.setDraggable(draggable);
-      print('🗺️ 지도 드래그 ${draggable ? "활성화" : "비활성화"}');
-    }
-  }
-
-  // 버스 도착정보 카드 위젯
-  Widget _buildBusArrivalCard(BusArrivalInfo info) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 버스 노선 정보
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _getBusTypeColor(info.routeTypeName),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  info.routeTypeName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  info.routeName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 12),
-          
-          // 도착 예정 시간
-          Row(
-            children: [
-              Expanded(
-                child: _buildArrivalTimeInfo(
-                  '첫 번째 버스',
-                  info.predictTime1,
-                  info.locationNo1,
-                  info.lowPlate1,
-                  info.remainSeatCnt1,
-                  isPrimary: true,
-                ),
-              ),
-              if (info.predictTime2 > 0) ...[
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildArrivalTimeInfo(
-                    '두 번째 버스',
-                    info.predictTime2,
-                    info.locationNo2,
-                    info.lowPlate2,
-                    info.remainSeatCnt2,
-                    isPrimary: false,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
-      ),
+      },
+      onSelect: (busStop) => _selectBusStop(busStop),
     );
   }
 
-  // 도착 시간 정보 위젯
-  Widget _buildArrivalTimeInfo(
-    String label,
-    int predictTime,
-    int locationNo,
-    String lowPlate,
-    int remainSeatCnt, {
-    bool isPrimary = false,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isPrimary ? Colors.blue[50] : Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isPrimary ? Colors.blue[200]! : Colors.grey[200]!,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            predictTime == 0 ? '곧 도착' : '${predictTime}분 후',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: isPrimary ? Colors.blue[700] : Colors.grey[700],
-            ),
-          ),
-          if (locationNo > 0) ...[
-            const SizedBox(height: 2),
-            Text(
-              '${locationNo}정류장 전',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-          if (lowPlate == 'Y') ...[
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.green[100],
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                '저상버스',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.green[700],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
+  // 서울 버스 마커 탭 처리
+  void _handleSeoulBusMarkerTap(String markerId) {
+    final busStop = seoulBusStopMap[markerId];
+    if (busStop == null) return;
+
+    _setMapDraggable(false);
+    isBottomSheetVisible.value = true;
+
+    TransportBottomSheet.showSeoulBusArrival(
+      busStop: busStop,
+      mode: mode.value,
+      onClose: () {
+        isBottomSheetVisible.value = false;
+        _setMapDraggable(true);
+      },
+      onSelect: (busStop) => _selectBusStop(busStop),
     );
   }
 
-  // 버스 유형별 색상 반환
-  Color _getBusTypeColor(String routeTypeName) {
-    switch (routeTypeName) {
-      case '직행좌석':
-        return Colors.red;
-      case '좌석':
-        return Colors.blue;
-      case '일반':
-        return Colors.green;
-      case '광역급행':
-        return Colors.purple;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  // 버스 도착정보 로드
-  Future<void> _loadBusArrivalInfo(String stationId) async {
-    isBottomSheetLoading.value = true;
-    busArrivalInfos.clear();
-    
-    try {
-      final arrivalInfos = await BusArrivalService.getBusArrivalInfo(stationId);
-      busArrivalInfos.addAll(arrivalInfos);
-      print('✅ 버스 도착정보 로드 완료: ${arrivalInfos.length}개');
-    } catch (e) {
-      print('❌ 버스 도착정보 로드 실패: $e');
-    } finally {
-      isBottomSheetLoading.value = false;
-    }
-  }
-
-  // 서울 버스 도착정보 로드
-  Future<void> _loadSeoulBusArrivalInfo(String cityCode, String nodeId) async {
-    isBottomSheetLoading.value = true;
-    seoulBusArrivalInfos.clear();
-    
-    try {
-      final arrivalInfos = await SeoulBusService.getBusArrivalInfo(cityCode, nodeId);
-      seoulBusArrivalInfos.addAll(arrivalInfos);
-      print('✅ 서울 버스 도착정보 로드 완료: ${arrivalInfos.length}개');
-    } catch (e) {
-      print('❌ 서울 버스 도착정보 로드 실패: $e');
-    } finally {
-      isBottomSheetLoading.value = false;
-    }
-  }
-
-  // 경기도 버스 새로고침
-  Future<void> _refreshBusArrivalInfo() async {
-    final busStop = selectedBusStop.value;
-    if (busStop != null) {
-      print('🔄 경기도 버스 도착정보 새로고침');
-      await _loadBusArrivalInfo(busStop.stationId);
-    }
-  }
-
-  // 서울 버스 새로고침
-  Future<void> _refreshSeoulBusArrivalInfo() async {
-    final busStop = selectedSeoulBusStop.value;
-    if (busStop != null) {
-      print('🔄 서울 버스 도착정보 새로고침');
-      await _loadSeoulBusArrivalInfo('23', busStop.stationId);
-    }
-  }
-
-  // 서울 버스 도착정보 카드 위젯
-  Widget _buildSeoulBusArrivalCard(SeoulBusArrival info) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 버스 노선 정보
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _getSeoulBusTypeColor(info.routeTp),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  _getSeoulBusTypeName(info.routeTp),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  info.routeNo,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 8),
-          
-          // 차량 유형 정보
-          if (info.vehicleTp.isNotEmpty) ...[
-            Row(
-              children: [
-                Icon(
-                  Icons.directions_bus,
-                  size: 16,
-                  color: Colors.grey[600],
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '차량유형: ${info.vehicleTp}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-          ],
-          
-          // 도착 시간 정보
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue[200]!),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '도착 예정',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    if (info.arrPrevStationCnt > 0) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.orange[100],
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          '${info.arrPrevStationCnt}정류장 전',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.orange[700],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  info.arrTimeInMinutes == 0 ? '곧 도착' : '${info.arrTimeInMinutes}분 후',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue[700],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 서울 버스 도착 시간 정보 위젯
-  Widget _buildSeoulArrivalTimeInfo(
-    String label,
-    String predictTime,
-    String locationNo, {
-    bool isPrimary = false,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isPrimary ? Colors.blue[50] : Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isPrimary ? Colors.blue[200]! : Colors.grey[200]!,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            predictTime.isEmpty || predictTime == '0' ? '곧 도착' : '${predictTime}분 후',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: isPrimary ? Colors.blue[700] : Colors.grey[700],
-            ),
-          ),
-          if (locationNo.isNotEmpty && locationNo != '0') ...[
-            const SizedBox(height: 2),
-            Text(
-              '${locationNo}번째 전',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // 서울 버스 유형별 색상 반환
-  Color _getSeoulBusTypeColor(String routeType) {
-    switch (routeType) {
-      case '1': // 공항
-        return Colors.orange;
-      case '2': // 마을
-        return Colors.green;
-      case '3': // 간선
-        return Colors.blue;
-      case '4': // 지선
-        return Colors.green;
-      case '5': // 순환
-        return Colors.purple;
-      case '6': // 광역
-        return Colors.red;
-      case '7': // 인천
-        return Colors.cyan;
-      case '8': // 경기
-        return Colors.amber;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  // 서울 버스 유형명 반환
-  String _getSeoulBusTypeName(String routeType) {
-    switch (routeType) {
-      case '1':
-        return '공항';
-      case '2':
-        return '마을';
-      case '3':
-        return '간선';
-      case '4':
-        return '지선';
-      case '5':
-        return '순환';
-      case '6':
-        return '광역';
-      case '7':
-        return '인천';
-      case '8':
-        return '경기';
-      default:
-        return '일반';
-    }
-  }
-
-  // 드래그 변화 감지
+  // 드래그 이벤트 처리
   void onDragChange(LatLng latLng, int zoomLevel, DragType dragType) {
-    
     switch (dragType) {
       case DragType.start:
-        print('🖱️ 드래그 시작');
         showResearchButton.value = false;
         break;
       case DragType.move:
-        // 드래그 중에는 버튼 숨김
         break;
       case DragType.end:
         print('🖱️ 드래그 완료: (${latLng.latitude}, ${latLng.longitude})');
@@ -1691,605 +312,102 @@ class LocationSearchController extends GetxController {
     }
   }
 
-  // 재검색 버튼 탭 처리
+  // 재검색 버튼 탭
   void onResearchButtonTap() async {
     if (lastDragPosition == null) return;
     
-    print('🔍 새 위치에서 재검색 시작: (${lastDragPosition!.latitude}, ${lastDragPosition!.longitude})');
-    
-    // 재검색 버튼 숨기기
     showResearchButton.value = false;
     
-    // 선택된 카테고리에 따라 검색
     if (selectedCategory.value == 0) {
-      // 지하철역 검색
       await _searchSubwayStationsAtLocation(lastDragPosition!);
     } else {
-      // 버스정류장 검색
       await _searchBusStopsAtLocation(lastDragPosition!);
     }
   }
 
-  // 특정 위치에서 버스정류장 검색 (드래그 완료 시 사용)
-  Future<void> _searchBusStopsAtLocation(LatLng center) async {
-    if (mapController == null) return;
-
+  // 특정 위치에서 지하철역 검색
+  Future<void> _searchSubwayStationsAtLocation(LatLng center) async {
     try {
-      print('🚌 새 위치에서 버스정류장 검색 시작');
-      
-      // 기존 마커 제거
-      markers.clear();
-      await mapController!.clearMarker();
-
-      // 1. 경기도 버스정류장 API 검색
-      await _searchGyeonggiBusStops(center);
-
-      // 2. 서울 버스정류장 API 검색
-      await _searchSeoulBusStops(center);
-
-      // 지도에 마커 추가
-      if (markers.isNotEmpty) {
-        await mapController!.addMarker(markers: markers);
-        print('🗺️ 새 위치에 총 ${markers.length}개의 버스정류장 마커를 표시했습니다.');
-      }
-
-    } catch (e, stackTrace) {
-      print('❌ 새 위치 버스정류장 검색 중 오류 발생: $e');
-    }
-  }
-
-  // 지하철 도착정보 바텀시트 표시
-  void _showSubwayArrivalBottomSheet(String stationName) {
-    // 바텀시트 표시 시 지도 드래그 비활성화
-    _setMapDraggable(false);
-    isBottomSheetVisible.value = true;
-    
-    isLoadingSubwayArrival.value = true;
-    subwayArrivalErrorMessage.value = '';
-    
-    Get.bottomSheet(
-      Container(
-        height: Get.height * 0.6,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        child: Column(
-          children: [
-            // 바텀시트 헤더
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.train,
-                    color: Colors.blue.shade600,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      '${stationName}역',
-                      style: TextStyle(
-                        color: Colors.blue.shade800,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade100,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: IconButton(
-                      onPressed: () => _loadSubwayArrivalInfo(stationName),
-                      icon: Icon(
-                        Icons.refresh,
-                        color: Colors.blue.shade600,
-                        size: 20,
-                      ),
-                      tooltip: '새로고침',
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // 위치 선택 버튼 (온보딩 모드에서만 표시)
-                  if (mode.value.isNotEmpty) ...[
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade100,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: IconButton(
-                        onPressed: () => _selectSubwayStation(stationName),
-                        icon: Icon(
-                          Icons.check,
-                          color: Colors.blue.shade600,
-                          size: 20,
-                        ),
-                        tooltip: '이 역 선택',
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                  ],
-                  IconButton(
-                    onPressed: () => _closeSubwayArrivalBottomSheet(),
-                    icon: Icon(
-                      Icons.close,
-                      color: Colors.blue.shade600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // 지하철 도착정보 내용
-            Expanded(
-              child: Obx(() {
-                if (isLoadingSubwayArrival.value) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(40),
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                }
-                
-                if (subwayArrivalErrorMessage.value.isNotEmpty) {
-                  return Container(
-                    margin: const EdgeInsets.all(16),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.red.shade200),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: Colors.red.shade600,
-                          size: 48,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          subwayArrivalErrorMessage.value,
-                          style: TextStyle(
-                            color: Colors.red.shade700,
-                            fontSize: 16,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: () => _loadSubwayArrivalInfo(stationName),
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('다시 시도'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade600,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                
-                if (subwayArrivals.isEmpty) {
-                  return Container(
-                    margin: const EdgeInsets.all(16),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.train_outlined,
-                          color: Colors.grey.shade400,
-                          size: 48,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          '현재 도착 정보가 없습니다',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: subwayArrivals.length,
-                  itemBuilder: (context, index) {
-                    final arrival = subwayArrivals[index];
-                    return _buildSubwayArrivalCard(arrival);
-                  },
-                );
-              }),
-            ),
-          ],
-        ),
-      ),
-      isScrollControlled: true,
-      isDismissible: true,
-      enableDrag: true,
-    ).then((_) {
-      // 바텀시트가 닫힐 때만 지도 드래그 재활성화
-      if (isBottomSheetVisible.value) {
-        isBottomSheetVisible.value = false;
-        _setMapDraggable(true);
-      }
-    });
-    
-    // 바텀시트가 표시된 후 데이터 로드
-    _loadSubwayArrivalInfo(stationName);
-  }
-
-  // 지하철 도착정보 로드
-  Future<void> _loadSubwayArrivalInfo(String stationName) async {
-    try {
-      isLoadingSubwayArrival.value = true;
-      subwayArrivalErrorMessage.value = '';
-      
-      print('🚇 지하철 도착정보 로드 시작: $stationName');
-      print('🚇 DEBUG: 받은 stationName = "$stationName"');
-      // 역명 정리 (혹시 호선 정보가 포함되어 있다면 제거)
-      final cleanStationName = _cleanStationName(stationName);
-      print('🚇 DEBUG: 정리된 stationName = "$cleanStationName"');
-      
-      final arrivals = await SubwayService.getRealtimeArrival(cleanStationName);
-      subwayArrivals.value = arrivals;
-      
-      print('✅ 지하철 도착정보 로드 완료: ${arrivals.length}개');
-      
+      final stations = await SubwaySearchService.searchNearbyStations(center);
+      await _updateSubwayMarkers(stations);
+      print('🚇 새 위치 지하철역 검색 완료: ${stations.length}개');
     } catch (e) {
-      print('❌ 지하철 도착정보 로드 실패: $e');
-      subwayArrivalErrorMessage.value = '도착정보를 불러올 수 없습니다.\n잠시 후 다시 시도해주세요.';
-    } finally {
-      isLoadingSubwayArrival.value = false;
+      print('❌ 새 위치 지하철역 검색 오류: $e');
     }
   }
 
-  // 지하철 도착 정보 카드 위젯
-  Widget _buildSubwayArrivalCard(SubwayArrival arrival) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // 호선 정보
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: _getLineColor(arrival.subwayId),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              arrival.lineDisplayName,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          
-          // 열차 정보
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  arrival.cleanTrainLineNm,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(
-                      arrival.directionText,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // 열차 종류 표시 (급행/일반/특급 등)
-                    if (arrival.btrainSttus.isNotEmpty && arrival.btrainSttus != '일반')
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: _getTrainTypeColor(arrival.btrainSttus),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          arrival.btrainSttus,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    if (arrival.btrainSttus.isNotEmpty && arrival.btrainSttus != '일반' && arrival.isLastTrain)
-                      const SizedBox(width: 4),
-                    if (arrival.isLastTrain)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade600,
-                          borderRadius: BorderRadius.circular(6),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.red.withValues(alpha: 0.3),
-                              blurRadius: 4,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.warning,
-                              size: 12,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              '막차',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          
-          // 도착 시간 및 상세 정보
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    arrival.arrivalStatusIcon,
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    arrival.arrivalTimeText,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: _getArrivalColor(arrival.arvlCd),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 2),
-              Text(
-                arrival.detailedArrivalInfo.isNotEmpty 
-                    ? arrival.detailedArrivalInfo 
-                    : _cleanStatusText(arrival.btrainSttus),
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey[600],
-                ),
-                textAlign: TextAlign.end,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 지하철 호선 색상 (수도권 전체)
-  Color _getLineColor(String subwayId) {
-    switch (subwayId) {
-      // 서울지하철 1~9호선
-      case '1001': return const Color(0xFF0052A4); // 1호선 (진파랑)
-      case '1002': return const Color(0xFF00A84D); // 2호선 (초록)
-      case '1003': return const Color(0xFFEF7C1C); // 3호선 (주황)
-      case '1004': return const Color(0xFF00A5DE); // 4호선 (하늘)
-      case '1005': return const Color(0xFF996CAC); // 5호선 (보라)
-      case '1006': return const Color(0xFFCD7C2F); // 6호선 (갈색)
-      case '1007': return const Color(0xFF747F00); // 7호선 (올리브)
-      case '1008': return const Color(0xFFEA545D); // 8호선 (분홍)
-      case '1009': return const Color(0xFFBDB092); // 9호선 (금색)
-      
-      // 수도권 광역철도
-      case '1061': return const Color(0xFF0C8E72); // 중앙선 (청록)
-      case '1063': return const Color(0xFF77C4A3); // 경의중앙선 (연청록)
-      case '1065': return const Color(0xFF0090D2); // 공항철도 (진하늘)
-      case '1067': return const Color(0xFF178C4B); // 경춘선 (청록)
-      case '1075': return const Color(0xFFEAB026); // 수인분당선 (노랑)
-      case '1077': return const Color(0xFFD31145); // 신분당선 (빨강)
-      case '1092': return const Color(0xFFB7CE63); // 우이신설선 (연노랑)
-      case '1093': return const Color(0xFF8FC31F); // 서해선 (연두)
-      case '1081': return const Color(0xFF003DA5); // 경강선 (진파랑)
-      case '1032': return const Color(0xFF9B1B7E); // GTX-A (자주)
-      
-      // 인천지하철
-      case '1091': return const Color(0xFF759CCE); // 인천1호선 (하늘)
-      case '1094': return const Color(0xFFE6A829); // 인천2호선 (주황)
-      
-      default: return Colors.grey; // 알 수 없는 노선
+  // 특정 위치에서 버스정류장 검색
+  Future<void> _searchBusStopsAtLocation(LatLng center) async {
+    try {
+      final result = await BusSearchService.searchNearbyBusStops(center);
+      await _updateBusMarkers(result);
+      print('🚌 새 위치 버스정류장 검색 완료: ${result.totalCount}개');
+    } catch (e) {
+      print('❌ 새 위치 버스정류장 검색 오류: $e');
     }
   }
 
-  // 도착 상태 색상
-  Color _getArrivalColor(int arvlCd) {
-    switch (arvlCd) {
-      case 0: return Colors.red;        // 진입
-      case 1: return Colors.orange;     // 도착
-      case 2: return Colors.green;      // 출발
-      case 3: return Colors.blue;       // 전역출발
-      case 4: return Colors.purple;     // 전역진입
-      case 5: return Colors.orange;     // 전역도착
-      case 99: return Colors.grey;      // 운행중
-      default: return Colors.black;
-    }
-  }
+  // 지하철역 선택
+  void _selectSubwayStation(SubwayStationInfo station) {
+    if (mode.value.isEmpty) return;
 
-  // 열차 종류 색상
-  Color _getTrainTypeColor(String trainType) {
-    switch (trainType) {
-      case '급행': return Colors.red.shade600;      // 급행
-      case 'ITX': return Colors.purple.shade600;   // ITX
-      case '특급': return Colors.orange.shade600;   // 특급
-      case '직행': return Colors.blue.shade600;     // 직행
-      default: return Colors.grey.shade600;        // 기타
-    }
-  }
-  
-  // 상태 텍스트 정리 (대괄호 제거)
-  String _cleanStatusText(String statusText) {
-    // [5]번째 전역 → 5번째 전역
-    return statusText.replaceAll(RegExp(r'\\[(\\d+)\\]'), r'$1');
-  }
-
-  // 지하철 바텀시트 닫기 및 지도 드래그 재활성화
-  void _closeSubwayArrivalBottomSheet() {
-    if (isBottomSheetVisible.value) {
-      isBottomSheetVisible.value = false;
-      _setMapDraggable(true);
-      Get.back();
-    }
-  }
-
-  // 지하철역명 정리 (호선 정보 및 "역" 제거)
-  String _cleanStationName(String stationName) {
-    // "강남역 2호선" → "강남"
-    // "강남역 신분당선" → "강남"
-    // "종각역 1호선" → "종각"
-    String cleaned = stationName.split(' ')[0]; // 호선 정보 제거
-    if (cleaned.endsWith('역')) {
-      cleaned = cleaned.substring(0, cleaned.length - 1); // "역" 제거
-    }
-    return cleaned;
-  }
-
-  // 지하철역 선택 (바텀시트에서 호출)
-  void _selectSubwayStation(String stationName) {
-    if (mode.value.isEmpty) return; // 온보딩 모드가 아니면 무시
-    
-    // 지하철역 정보를 바탕으로 호선 정보 구성
-    String lineInfo = '';
-    String code = '';
-    
-    // 현재 지하철 도착정보에서 호선 정보 추출
-    if (subwayArrivals.isNotEmpty) {
-      final uniqueLines = <String>{};
-      for (final arrival in subwayArrivals) {
-        uniqueLines.add(arrival.lineDisplayName);
-      }
-      lineInfo = uniqueLines.join(', ');
-      code = subwayArrivals.first.subwayId;
-    }
-    
-    // 바텀시트 닫기
-    _closeSubwayArrivalBottomSheet();
-    
-    // 선택된 지하철역 정보를 이전 화면으로 반환
     Get.back(result: {
-      'name': '${stationName}역',
+      'name': '${station.cleanStationName}역',
       'type': 'subway',
-      'lineInfo': lineInfo.isNotEmpty ? lineInfo : '지하철역',
-      'code': code.isNotEmpty ? code : 'SUBWAY',
+      'lineInfo': '지하철역',
+      'code': station.id,
+      'latitude': station.latitude,
+      'longitude': station.longitude,
     });
   }
-  
-  // 버스정류장 선택 (바텀시트에서 호출)
+
+  // 버스정류장 선택
   void _selectBusStop(dynamic busStop) {
-    if (mode.value.isEmpty) return; // 온보딩 모드가 아니면 무시
-    
+    if (mode.value.isEmpty) return;
+
     String stationName = '';
     String lineInfo = '';
     String code = '';
-    
+    double latitude = 0;
+    double longitude = 0;
+
     if (busStop is GyeonggiBusStop) {
       stationName = busStop.stationName;
       lineInfo = '경기도 버스정류장';
       code = busStop.stationId;
+      latitude = busStop.y;
+      longitude = busStop.x;
     } else if (busStop is SeoulBusStop) {
       stationName = busStop.stationNm;
       lineInfo = '서울 버스정류장';
       code = busStop.stationId;
+      latitude = busStop.gpsY;
+      longitude = busStop.gpsX;
     }
-    
-    // 바텀시트 닫기
-    _closeBusArrivalBottomSheet();
-    
-    // 선택된 버스정류장 정보를 이전 화면으로 반환
+
     Get.back(result: {
       'name': stationName,
       'type': 'bus',
       'lineInfo': lineInfo,
       'code': code,
+      'latitude': latitude,
+      'longitude': longitude,
     });
   }
 
-  // 위치 선택 (기존 메서드)
-  void selectLocation(LocationInfo location) {
-    // 선택된 위치 정보를 이전 화면으로 반환
-    Get.back(result: {
-      'name': location.name,
-      'type': location.type,
-      'lineInfo': location.lineInfo,
-      'code': location.code,
-      'latitude': location.latitude,
-      'longitude': location.longitude,
-    });
+  // 지도 드래그 설정
+  void _setMapDraggable(bool draggable) {
+    if (mapController != null) {
+      mapController!.setDraggable(draggable);
+      print('🗺️ 지도 드래그 ${draggable ? "활성화" : "비활성화"}');
+    }
   }
 }
 
-// LocationInfo 클래스 정의
+// 기존 LocationInfo 클래스 (호환성을 위해 유지)
 class LocationInfo {
   final String name;
-  final String type; // 'subway' 또는 'bus'
+  final String type;
   final String lineInfo;
   final String code;
   final double latitude;
@@ -2300,23 +418,6 @@ class LocationInfo {
     required this.type,
     required this.lineInfo,
     required this.code,
-    required this.latitude,
-    required this.longitude,
-  });
-}
-
-// AddressInfo 클래스 정의
-class AddressInfo {
-  final String placeName;
-  final String addressName;
-  final String roadAddressName;
-  final double latitude;
-  final double longitude;
-
-  AddressInfo({
-    required this.placeName,
-    required this.addressName,
-    required this.roadAddressName,
     required this.latitude,
     required this.longitude,
   });
