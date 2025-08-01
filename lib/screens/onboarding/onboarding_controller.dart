@@ -15,7 +15,7 @@ class OnboardingController extends GetxController {
   final RxInt currentStep = 0.obs;
 
   // 총 단계 수
-  final int totalSteps = 2; // 임시로 2단계만 (환영 화면 + 경로 설정)
+  final int totalSteps = 3; // 환영 화면 + 경로 설정 + 근무시간 설정
 
   // 각 단계별 완료 상태
   final RxList<bool> stepCompleted = <bool>[].obs;
