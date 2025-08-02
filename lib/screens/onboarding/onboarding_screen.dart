@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'onboarding_controller.dart';
 import 'widgets/step_route_setup.dart';
 import 'widgets/step_work_time_setup.dart';
+import 'widgets/step_notification_setup.dart';
 
 class OnboardingScreen extends GetView<OnboardingController> {
   const OnboardingScreen({super.key});
@@ -18,6 +19,8 @@ class OnboardingScreen extends GetView<OnboardingController> {
           return const StepRouteSetup();
         case 2:
           return const StepWorkTimeSetup();
+        case 3:
+          return const StepNotificationSetup();
         default:
           return _buildWelcomeScreen();
       }

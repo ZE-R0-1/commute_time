@@ -160,7 +160,7 @@ class StepWorkTimeSetup extends GetView<OnboardingController> {
           Row(
             children: [
               Text(
-                '4단계 중 2단계 완료',
+                '3단계 중 2단계 완료',
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.grey[600],
@@ -168,7 +168,7 @@ class StepWorkTimeSetup extends GetView<OnboardingController> {
               ),
               const Spacer(),
               Text(
-                '50%',
+                '67%',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -179,6 +179,7 @@ class StepWorkTimeSetup extends GetView<OnboardingController> {
           ),
           const SizedBox(height: 8),
           _buildProgressBar(),
+          const SizedBox(height: 8)
         ],
       ),
     );
@@ -189,8 +190,8 @@ class StepWorkTimeSetup extends GetView<OnboardingController> {
       builder: (context, constraints) {
         final totalWidth = constraints.maxWidth;
         final gapWidth = 8.0;
-        final totalGaps = gapWidth * 3;
-        final segmentWidth = (totalWidth - totalGaps) / 4;
+        final totalGaps = gapWidth * 2; // 3단계이므로 간격은 2개
+        final segmentWidth = (totalWidth - totalGaps) / 3; // 3개의 세그먼트
 
         return Row(
           children: [
@@ -208,20 +209,15 @@ class StepWorkTimeSetup extends GetView<OnboardingController> {
                       ),
                       SizedBox(width: gapWidth),
                     ]).expand((x) => x),
-            // 3-4단계 (미완료)
-            ...List.generate(
-                2,
-                (index) => [
-                      Container(
-                        width: segmentWidth,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                      ),
-                      if (index < 1) SizedBox(width: gapWidth),
-                    ]).expand((x) => x),
+            // 3단계 (미완료)
+            Container(
+              width: segmentWidth,
+              height: 6,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
           ],
         );
       },
@@ -587,170 +583,168 @@ class StepWorkTimeSetup extends GetView<OnboardingController> {
   }) {
     final List<int> timeOptions = [15, 30, 45, 60]; // 분 단위
 
-    return StatefulBuilder(builder: (context, setState) {
-      int selectedTime = preparationTime;
+    final RxInt selectedTime = preparationTime.obs;
 
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withValues(alpha: 0.3), width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.coffee,
-                    color: color,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    '준비 시간',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+    return Obx(() => Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withValues(alpha: 0.3), width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.coffee,
                       color: color,
+                      size: 24,
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      '준비 시간',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
 
-            // 시간 선택 옵션
-            Column(
-              children: timeOptions
-                  .map((time) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: GestureDetector(
-                          onTap: () => setState(() => selectedTime = time),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: selectedTime == time
-                                  ? color.withValues(alpha: 0.1)
-                                  : Colors.grey[50],
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: selectedTime == time
-                                    ? color
-                                    : Colors.grey[200]!,
-                                width: selectedTime == time ? 2 : 1,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  selectedTime == time
-                                      ? Icons.radio_button_checked
-                                      : Icons.radio_button_unchecked,
-                                  color: selectedTime == time
+              // 시간 선택 옵션
+              Column(
+                children: timeOptions
+                    .map((time) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: GestureDetector(
+                            onTap: () => selectedTime.value = time,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: selectedTime.value == time
+                                    ? color.withValues(alpha: 0.1)
+                                    : Colors.grey[50],
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: selectedTime.value == time
                                       ? color
-                                      : Colors.grey[400],
+                                      : Colors.grey[200]!,
+                                  width: selectedTime.value == time ? 2 : 1,
                                 ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  '$time분',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: selectedTime == time
-                                        ? FontWeight.w600
-                                        : FontWeight.normal,
-                                    color: selectedTime == time
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    selectedTime.value == time
+                                        ? Icons.radio_button_checked
+                                        : Icons.radio_button_unchecked,
+                                    color: selectedTime.value == time
                                         ? color
-                                        : Colors.black87,
+                                        : Colors.grey[400],
                                   ),
-                                ),
-                                const Spacer(),
-                                if (time == 60)
+                                  const SizedBox(width: 12),
                                   Text(
-                                    '1시간',
+                                    '$time분',
                                     style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[600],
+                                      fontSize: 18,
+                                      fontWeight: selectedTime.value == time
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                      color: selectedTime.value == time
+                                          ? color
+                                          : Colors.black87,
                                     ),
                                   ),
-                              ],
+                                  const Spacer(),
+                                  if (time == 60)
+                                    Text(
+                                      '1시간',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
+                        ))
+                    .toList(),
+              ),
+
+              const SizedBox(height: 24),
+
+              // 확인/취소 버튼
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: onCancel,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      ))
-                  .toList(),
-            ),
-
-            const SizedBox(height: 24),
-
-            // 확인/취소 버튼
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: onCancel,
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ),
-                    child: Text(
-                      '취소',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey[600],
+                      child: Text(
+                        '취소',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey[600],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => onConfirm(selectedTime),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: color,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => onConfirm(selectedTime.value),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: color,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                    ),
-                    child: const Text(
-                      '확인',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                      child: const Text(
+                        '확인',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    });
+                ],
+              ),
+            ],
+          ),
+        ));
   }
 
   void _showTimePicker(String currentTime, Function(String) onConfirm) {

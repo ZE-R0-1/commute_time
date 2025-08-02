@@ -235,7 +235,7 @@ class StepRouteSetup extends GetView<OnboardingController> {
           Row(
             children: [
               Text(
-                '4단계 중 1단계 완료',
+                '3단계 중 1단계 완료',
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.grey[600],
@@ -243,7 +243,7 @@ class StepRouteSetup extends GetView<OnboardingController> {
               ),
               const Spacer(),
               Text(
-                '25%',
+                '33%',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -263,33 +263,33 @@ class StepRouteSetup extends GetView<OnboardingController> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalWidth = constraints.maxWidth;
-        final gapWidth = 8.0; // 👈 여백 넓히기 (4 → 6)
-        final totalGaps = gapWidth * 3; // 3개의 간격
-        final segmentWidth = (totalWidth - totalGaps) / 4;
+        final gapWidth = 8.0;
+        final totalGaps = gapWidth * 2; // 3단계이므로 간격은 2개
+        final segmentWidth = (totalWidth - totalGaps) / 3; // 3개의 세그먼트
 
         return Row(
           children: [
             // 1단계 (완료)
             Container(
               width: segmentWidth,
-              height: 6, // 👈 높이 키우기 (4 → 6)
+              height: 6,
               decoration: BoxDecoration(
                 color: Colors.blue[600],
-                borderRadius: BorderRadius.circular(3), // 👈 radius도 조정 (2 → 3)
+                borderRadius: BorderRadius.circular(3),
               ),
             ),
-            SizedBox(width: gapWidth), // 👈 넓어진 여백
-            // 2~4단계 (미완료)
-            ...List.generate(3, (index) => [
+            SizedBox(width: gapWidth),
+            // 2-3단계 (미완료)
+            ...List.generate(2, (index) => [
               Container(
                 width: segmentWidth,
-                height: 6, // 👈 높이 키우기
+                height: 6,
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(3), // 👈 radius 조정
+                  borderRadius: BorderRadius.circular(3),
                 ),
               ),
-              if (index < 2) SizedBox(width: gapWidth), // 👈 넓어진 여백
+              if (index < 1) SizedBox(width: gapWidth),
             ]).expand((x) => x),
           ],
         );
