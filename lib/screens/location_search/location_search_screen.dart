@@ -198,15 +198,18 @@ class LocationSearchScreen extends GetView<LocationSearchController> {
     }
   }
 
-  void _handleSearchResult(Map<String, dynamic> result) {
+  void _handleSearchResult(Map<String, dynamic> result) async {
     // 지도 중심을 선택된 위치로 이동
     final latitude = result['latitude'] as double?;
     final longitude = result['longitude'] as double?;
     
     if (latitude != null && longitude != null && controller.mapController != null) {
-      controller.mapController!.setCenter(LatLng(latitude, longitude));
+      await controller.mapController!.setCenter(LatLng(latitude, longitude));
       print('📍 선택된 위치로 지도 이동: (${latitude}, ${longitude})');
       print('🏷️ 선택된 장소: ${result['title']}');
+      
+      // 지도 이동 후 현재 선택된 카테고리에 따라 마커 표시
+      await controller.refreshMarkersAfterMove();
     }
   }
 

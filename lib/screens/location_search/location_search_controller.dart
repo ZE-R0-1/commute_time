@@ -107,11 +107,16 @@ class LocationSearchController extends GetxController {
     await mapController!.setCenter(LatLng(address.latitude, address.longitude));
     showSearchResults.value = false;
     addressSearchResults.clear();
+    
+    // 지도 이동 후 현재 선택된 카테고리에 따라 마커 표시
+    await _refreshMarkersAfterMove();
   }
 
   // 카테고리 변경
   void changeCategory(int category) {
     if (selectedCategory.value == category) return;
+    
+    print('🏷️ 카테고리 탭: ${category == 0 ? "지하철역" : "버스정류장"}');
     
     selectedCategory.value = category;
     showSearchResults.value = false;
@@ -393,6 +398,22 @@ class LocationSearchController extends GetxController {
       'latitude': latitude,
       'longitude': longitude,
     });
+  }
+
+  // 지도 이동 후 마커 새로고침 (public 메서드)
+  Future<void> refreshMarkersAfterMove() async {
+    print('🔄 지도 이동 완료 - 마커 새로고침 시작');
+    
+    if (selectedCategory.value == 0) {
+      await _searchSubwayStations();
+    } else {
+      await _searchBusStops();
+    }
+  }
+
+  // 지도 이동 후 마커 새로고침 (private 메서드 - 내부 호출용)
+  Future<void> _refreshMarkersAfterMove() async {
+    await refreshMarkersAfterMove();
   }
 
   // 지도 드래그 설정
