@@ -362,10 +362,22 @@ class TransportBottomSheet {
       );
     }
 
+    // 열차 종착지별로 그룹핑
+    final Map<String, List<SubwayArrival>> groupedByDirection = {};
+    for (final arrival in arrivals) {
+      final key = '${arrival.lineDisplayName}_${arrival.cleanTrainLineNm}';
+      if (!groupedByDirection.containsKey(key)) {
+        groupedByDirection[key] = [];
+      }
+      groupedByDirection[key]!.add(arrival);
+    }
+    
+    final groupedList = groupedByDirection.values.toList();
+    
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: arrivals.length,
-      itemBuilder: (context, index) => _buildSubwayArrivalCard(arrivals[index]),
+      itemCount: groupedList.length,
+      itemBuilder: (context, index) => _buildSubwayArrivalCard(groupedList[index]),
     );
   }
 
@@ -418,8 +430,11 @@ class TransportBottomSheet {
     );
   }
 
-  // 지하철 도착정보 카드
-  static Widget _buildSubwayArrivalCard(SubwayArrival arrival) {
+  // 지하철 도착정보 카드 (방향별 그룹화)
+  static Widget _buildSubwayArrivalCard(List<SubwayArrival> arrivals) {
+    final firstArrival = arrivals.first;
+    final secondArrival = arrivals.length > 1 ? arrivals[1] : null;
+    
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       padding: const EdgeInsets.all(16),
@@ -434,59 +449,109 @@ class TransportBottomSheet {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 호선 정보
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: SubwaySearchService.getLineColor(arrival.subwayId),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              arrival.lineDisplayName,
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-            ),
-          ),
-          const SizedBox(width: 12),
-          
-          // 열차 정보
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  arrival.cleanTrainLineNm,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  arrival.directionText,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          ),
-          
-          // 도착 시간
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          // 열차 노선 정보
+          Row(
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(arrival.arrivalStatusIcon, style: const TextStyle(fontSize: 14)),
-                  const SizedBox(width: 4),
-                  Text(
-                    arrival.arrivalTimeText,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: SubwaySearchService.getArrivalColor(arrival.arvlCd),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: SubwaySearchService.getLineColor(firstArrival.subwayId),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  firstArrival.lineDisplayName,
+                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      firstArrival.cleanTrainLineNm,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      firstArrival.directionText,
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // 도착 예정 시간
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue[200]!),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '첫 번째 열차',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(firstArrival.arrivalStatusIcon, style: const TextStyle(fontSize: 14)),
+                          const SizedBox(width: 4),
+                          Text(
+                            firstArrival.arrivalTimeText,
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue[700]),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (secondArrival != null) ...[
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[200]!),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '두 번째 열차',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Text(secondArrival.arrivalStatusIcon, style: const TextStyle(fontSize: 14)),
+                            const SizedBox(width: 4),
+                            Text(
+                              secondArrival.arrivalTimeText,
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[700]),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ],
           ),
         ],
@@ -713,9 +778,19 @@ class TransportBottomSheet {
     try {
       isLoading.value = true;
       errorMessage.value = '';
+      print('🚇 지하철 도착정보 요청: $stationName');
       final result = await SubwaySearchService.getArrivalInfo(stationName);
       arrivals.value = result;
+      
+      print('✅ 지하철 도착정보 수신 완료: ${result.length}개');
+      for (int i = 0; i < result.length; i++) {
+        final arrival = result[i];
+        print('  ${i + 1}. [${arrival.lineDisplayName}] ${arrival.cleanTrainLineNm} → ${arrival.directionText}');
+        print('     도착시간: ${arrival.arrivalTimeText} ${arrival.arrivalStatusIcon}');
+        print('     상태코드: ${arrival.arvlCd}');
+      }
     } catch (e) {
+      print('❌ 지하철 도착정보 로드 실패: $e');
       errorMessage.value = '도착정보를 불러올 수 없습니다.\n잠시 후 다시 시도해주세요.';
     } finally {
       isLoading.value = false;
@@ -730,8 +805,19 @@ class TransportBottomSheet {
   ) async {
     isLoading.value = true;
     try {
+      print('🚌 경기도 버스 도착정보 요청: $stationId');
       final result = await BusSearchService.getGyeonggiBusArrivalInfo(stationId);
       arrivals.value = result;
+      
+      print('✅ 경기도 버스 도착정보 수신 완료: ${result.length}개');
+      for (int i = 0; i < result.length; i++) {
+        final arrival = result[i];
+        print('  ${i + 1}. [${arrival.routeTypeName}] ${arrival.routeName}');
+        print('     첫 번째: ${arrival.predictTime1 == 0 ? "곧 도착" : "${arrival.predictTime1}분 후"} (${arrival.locationNo1}정류장 전)');
+        if (arrival.predictTime2 > 0) {
+          print('     두 번째: ${arrival.predictTime2}분 후 (${arrival.locationNo2}정류장 전)');
+        }
+      }
     } catch (e) {
       print('❌ 경기도 버스 도착정보 로드 실패: $e');
     } finally {
@@ -747,8 +833,20 @@ class TransportBottomSheet {
   ) async {
     isLoading.value = true;
     try {
+      print('🚌 서울 버스 도착정보 요청: $stationId');
       final result = await BusSearchService.getSeoulBusArrivalInfo(stationId);
       arrivals.value = result;
+      
+      print('✅ 서울 버스 도착정보 수신 완료: ${result.length}개');
+      for (int i = 0; i < result.length; i++) {
+        final arrival = result[i];
+        final busTypeName = BusSearchService.getSeoulBusTypeName(arrival.routeTp);
+        print('  ${i + 1}. [$busTypeName] ${arrival.routeNo}');
+        print('     도착예정: ${arrival.arrTimeInMinutes == 0 ? "곧 도착" : "${arrival.arrTimeInMinutes}분 후"}');
+        if (arrival.arrPrevStationCnt > 0) {
+          print('     위치: ${arrival.arrPrevStationCnt}정류장 전');
+        }
+      }
     } catch (e) {
       print('❌ 서울 버스 도착정보 로드 실패: $e');
     } finally {

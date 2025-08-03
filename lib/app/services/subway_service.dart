@@ -510,7 +510,6 @@ class SubwayArrival {
   });
 
   factory SubwayArrival.fromJson(Map<String, dynamic> json) {
-    print('파싱 중인 JSON 데이터: ${json.keys}');
     return SubwayArrival(
       subwayId: json['subwayId'] ?? '',
       updnLine: json['updnLine'] ?? '',
