@@ -249,9 +249,14 @@ class LocationSearchController extends GetxController {
     final station = subwayStationMap[markerId];
     if (station == null) return;
 
+    print('🚇 지하철역 placeName: ${station.placeName}');
+    
     _setMapDraggable(false);
     isBottomSheetVisible.value = true;
 
+    // placeName에서 노선 정보 추출 (예: "강남역 2호선" -> "2호선")
+    String lineFilter = _extractLineFromPlaceName(station.placeName);
+    
     TransportBottomSheet.showSubwayArrival(
       stationName: station.cleanStationName,
       mode: mode.value,
@@ -260,7 +265,34 @@ class LocationSearchController extends GetxController {
         _setMapDraggable(true);
       },
       onSelect: (stationName) => _selectSubwayStation(station),
+      placeName: station.placeName,
+      lineFilter: lineFilter,
     );
+  }
+
+  // placeName에서 노선 정보 추출
+  String _extractLineFromPlaceName(String placeName) {
+    if (placeName.contains('1호선')) return '1호선';
+    if (placeName.contains('2호선')) return '2호선';
+    if (placeName.contains('3호선')) return '3호선';
+    if (placeName.contains('4호선')) return '4호선';
+    if (placeName.contains('5호선')) return '5호선';
+    if (placeName.contains('6호선')) return '6호선';
+    if (placeName.contains('7호선')) return '7호선';
+    if (placeName.contains('8호선')) return '8호선';
+    if (placeName.contains('9호선')) return '9호선';
+    if (placeName.contains('신분당선')) return '신분당선';
+    if (placeName.contains('분당선')) return '분당선';
+    if (placeName.contains('경의중앙선')) return '경의중앙선';
+    if (placeName.contains('공항철도')) return '공항철도';
+    if (placeName.contains('경춘선')) return '경춘선';
+    if (placeName.contains('수인분당선')) return '수인분당선';
+    if (placeName.contains('우이신설선')) return '우이신설선';
+    if (placeName.contains('서해선')) return '서해선';
+    if (placeName.contains('김포골드라인')) return '김포골드라인';
+    if (placeName.contains('신림선')) return '신림선';
+    
+    return ''; // 노선 정보가 없으면 빈 문자열 반환
   }
 
   // 경기도 버스 마커 탭 처리

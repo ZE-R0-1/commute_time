@@ -14,6 +14,8 @@ class TransportBottomSheet {
     required VoidCallback onClose,
     required Function(String) onSelect,
     String mode = '',
+    String placeName = '',
+    String lineFilter = '',
   }) {
     final RxBool isLoading = true.obs;
     final RxList<SubwayArrival> arrivals = <SubwayArrival>[].obs;
@@ -37,13 +39,13 @@ class TransportBottomSheet {
               errorMessage.value = '';
               try {
                 final result = await SubwaySearchService.getArrivalInfo(stationName);
-                arrivals.value = result;
+                arrivals.value = _filterArrivals(result, lineFilter);
               } catch (e) {
                 errorMessage.value = '도착정보를 불러올 수 없습니다.\n잠시 후 다시 시도해주세요.';
               } finally {
                 isLoading.value = false;
               }
-            }),
+            }, placeName),
             
             // 내용
             Expanded(
@@ -58,7 +60,7 @@ class TransportBottomSheet {
     ).then((_) => onClose());
 
     // 데이터 로드
-    _loadSubwayArrivalInfo(stationName, isLoading, arrivals, errorMessage);
+    _loadSubwayArrivalInfo(stationName, isLoading, arrivals, errorMessage, lineFilter);
   }
 
   // 경기도 버스 도착정보 바텀시트
@@ -176,6 +178,7 @@ class TransportBottomSheet {
     VoidCallback onClose,
     Function(String) onSelect,
     VoidCallback onRefresh,
+    String placeName,
   ) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -192,7 +195,7 @@ class TransportBottomSheet {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              '${stationName}역',
+              placeName,
               style: TextStyle(
                 color: Colors.blue.shade800,
                 fontSize: 18,
@@ -475,10 +478,6 @@ class TransportBottomSheet {
                       firstArrival.cleanTrainLineNm,
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
-                    Text(
-                      firstArrival.directionText,
-                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                    ),
                   ],
                 ),
               ),
@@ -509,9 +508,12 @@ class TransportBottomSheet {
                         children: [
                           Text(firstArrival.arrivalStatusIcon, style: const TextStyle(fontSize: 14)),
                           const SizedBox(width: 4),
-                          Text(
-                            firstArrival.arrivalTimeText,
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue[700]),
+                          Expanded(
+                            child: Text(
+                              firstArrival.arrivalTimeText,
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue[700]),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
@@ -541,9 +543,12 @@ class TransportBottomSheet {
                           children: [
                             Text(secondArrival.arrivalStatusIcon, style: const TextStyle(fontSize: 14)),
                             const SizedBox(width: 4),
-                            Text(
-                              secondArrival.arrivalTimeText,
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[700]),
+                            Expanded(
+                              child: Text(
+                                secondArrival.arrivalTimeText,
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[700]),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ],
                         ),
@@ -768,19 +773,63 @@ class TransportBottomSheet {
     );
   }
 
+  // 도착 정보 필터링 함수
+  static List<SubwayArrival> _filterArrivals(List<SubwayArrival> arrivals, String lineFilter) {
+    if (lineFilter.isEmpty) {
+      return arrivals;
+    }
+    
+    // lineFilter에서 노선명 추출 (예: "강남역 2호선" -> "2호선")
+    String extractedLine = '';
+    if (lineFilter.contains('1호선')) extractedLine = '1호선';
+    else if (lineFilter.contains('2호선')) extractedLine = '2호선';
+    else if (lineFilter.contains('3호선')) extractedLine = '3호선';
+    else if (lineFilter.contains('4호선')) extractedLine = '4호선';
+    else if (lineFilter.contains('5호선')) extractedLine = '5호선';
+    else if (lineFilter.contains('6호선')) extractedLine = '6호선';
+    else if (lineFilter.contains('7호선')) extractedLine = '7호선';
+    else if (lineFilter.contains('8호선')) extractedLine = '8호선';
+    else if (lineFilter.contains('9호선')) extractedLine = '9호선';
+    else if (lineFilter.contains('신분당선')) extractedLine = '신분당선';
+    else if (lineFilter.contains('분당선')) extractedLine = '분당선';
+    else if (lineFilter.contains('경의중앙선')) extractedLine = '경의중앙선';
+    else if (lineFilter.contains('공항철도')) extractedLine = '공항철도';
+    else if (lineFilter.contains('경춘선')) extractedLine = '경춘선';
+    else if (lineFilter.contains('수인분당선')) extractedLine = '수인분당선';
+    else if (lineFilter.contains('우이신설선')) extractedLine = '우이신설선';
+    else if (lineFilter.contains('서해선')) extractedLine = '서해선';
+    else if (lineFilter.contains('김포골드라인')) extractedLine = '김포골드라인';
+    else if (lineFilter.contains('신림선')) extractedLine = '신림선';
+    
+    if (extractedLine.isEmpty) {
+      return arrivals;
+    }
+    
+    print('🔍 필터링 적용: $lineFilter -> $extractedLine');
+    
+    final filtered = arrivals.where((arrival) {
+      return arrival.lineDisplayName.contains(extractedLine) || 
+             arrival.cleanTrainLineNm.contains(extractedLine);
+    }).toList();
+    
+    print('📊 필터링 결과: ${arrivals.length}개 -> ${filtered.length}개');
+    return filtered;
+  }
+
   // 지하철 도착정보 로드
   static void _loadSubwayArrivalInfo(
     String stationName,
     RxBool isLoading,
     RxList<SubwayArrival> arrivals,
     RxString errorMessage,
+    String lineFilter,
   ) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
       print('🚇 지하철 도착정보 요청: $stationName');
       final result = await SubwaySearchService.getArrivalInfo(stationName);
-      arrivals.value = result;
+      arrivals.value = _filterArrivals(result, lineFilter);
       
       print('✅ 지하철 도착정보 수신 완료: ${result.length}개');
       for (int i = 0; i < result.length; i++) {

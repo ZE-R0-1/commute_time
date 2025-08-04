@@ -538,16 +538,17 @@ class SubwayArrival {
       case '1007': return '7호선';
       case '1008': return '8호선';
       case '1009': return '9호선';
+      case '1032': return 'GTX-A';
       case '1061': return '중앙선';
       case '1063': return '경의중앙선';
       case '1065': return '공항철도';
       case '1067': return '경춘선';
       case '1075': return '수인분당선';
       case '1077': return '신분당선';
+      case '1081': return '경강선';
       case '1092': return '우이신설선';
       case '1093': return '서해선';
-      case '1081': return '경강선';
-      case '1032': return 'GTX-A';
+      case '1094': return '신림선';
       default: return '알 수 없음';
     }
   }
