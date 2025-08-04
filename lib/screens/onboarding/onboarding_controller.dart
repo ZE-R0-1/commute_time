@@ -8,6 +8,21 @@ import '../../app/services/location_service.dart';
 import '../../app/services/kakao_address_service.dart'; // 🆕 카카오 주소 서비스 추가
 import '../../app/routes/app_pages.dart';
 
+// LocationInfo 클래스 정의
+class LocationInfo {
+  final String name;
+  final String type; // 'subway' 또는 'bus'
+  final String lineInfo;
+  final String code;
+
+  LocationInfo({
+    required this.name,
+    required this.type,
+    required this.lineInfo,
+    required this.code,
+  });
+}
+
 class OnboardingController extends GetxController {
   final GetStorage _storage = GetStorage();
 
@@ -25,6 +40,11 @@ class OnboardingController extends GetxController {
   final RxString workAddress = ''.obs;
   final Rx<TimeOfDay?> workStartTime = Rx<TimeOfDay?>(null);
   final Rx<TimeOfDay?> workEndTime = Rx<TimeOfDay?>(null);
+  final RxInt preparationTime = 30.obs; // 분 단위
+  
+  // 알림 설정
+  final RxBool departureNotification = true.obs;
+  final RxBool weatherNotification = true.obs;
 
   // 🆕 주소 검색 결과 저장 (좌표 정보 포함)
   final Rx<AddressResult?> selectedHomeAddress = Rx<AddressResult?>(null);
@@ -32,9 +52,9 @@ class OnboardingController extends GetxController {
   
   // 🆕 경로 설정 데이터
   final RxBool routeSetupCompleted = false.obs;
-  final RxString selectedDeparture = ''.obs;
-  final RxString selectedArrival = ''.obs;
-  final RxList<String> selectedTransfers = <String>[].obs;
+  final RxnString selectedDeparture = RxnString();
+  final RxnString selectedArrival = RxnString(); 
+  final RxList<LocationInfo> transferStations = <LocationInfo>[].obs;
 
   // 🆕 실제 위치 권한 및 정보
   final RxBool locationPermissionGranted = false.obs;
@@ -88,7 +108,8 @@ class OnboardingController extends GetxController {
       case 0: // 환영 화면
         return true;
       case 1: // 경로 설정
-        return selectedDeparture.value.isNotEmpty && selectedArrival.value.isNotEmpty;
+        return selectedDeparture.value != null && selectedDeparture.value!.isNotEmpty && 
+               selectedArrival.value != null && selectedArrival.value!.isNotEmpty;
       default:
         return false;
     }
@@ -336,6 +357,23 @@ class OnboardingController extends GetxController {
       print('퇴근 시간: ${endTime.format(Get.context!)}');
     }
   }
+  
+  // 준비 시간 설정
+  void setPreparationTime(int minutes) {
+    preparationTime.value = minutes;
+    print('준비 시간: ${minutes}분');
+  }
+  
+  // 알림 설정
+  void setNotificationSettings({
+    required bool departureNotification,
+    required bool weatherNotification,
+  }) {
+    this.departureNotification.value = departureNotification;
+    this.weatherNotification.value = weatherNotification;
+    print('출발시간 알림: $departureNotification');
+    print('날씨 알림: $weatherNotification');
+  }
 
   // 온보딩 완료 후 메인 화면으로 이동
   Future<void> _completeOnboarding() async {
@@ -348,6 +386,9 @@ class OnboardingController extends GetxController {
       await _storage.write('work_address', workAddress.value);
       await _storage.write('work_start_time', _timeToString(workStartTime.value));
       await _storage.write('work_end_time', _timeToString(workEndTime.value));
+      await _storage.write('preparation_time', preparationTime.value);
+      await _storage.write('departure_notification', departureNotification.value);
+      await _storage.write('weather_notification', weatherNotification.value);
       await _storage.write('location_permission', locationPermissionGranted.value);
       await _storage.write('onboarding_completed_at', DateTime.now().toIso8601String());
 
@@ -376,10 +417,16 @@ class OnboardingController extends GetxController {
         print('위치 정보 없이 온보딩 완료');
       }
 
+      // 🆕 온보딩 임시 데이터 정리
+      await _clearOnboardingTempData();
+
       print('=== 온보딩 완료 ===');
       print('집 주소: ${homeAddress.value}');
       print('회사 주소: ${workAddress.value}');
       print('근무시간: ${_timeToString(workStartTime.value)} ~ ${_timeToString(workEndTime.value)}');
+      print('준비시간: ${preparationTime.value}분');
+      print('출발시간 알림: ${departureNotification.value}');
+      print('날씨 알림: ${weatherNotification.value}');
       print('위치 권한: ${locationPermissionGranted.value}');
       if (location != null) {
         print('현재 위치: ${location.address}');
@@ -447,6 +494,29 @@ class OnboardingController extends GetxController {
         return '출발지, 환승지, 도착지를 설정하여\n최적의 출퇴근 경로를 만들어보세요.';
       default:
         return '';
+    }
+  }
+
+  // 🆕 온보딩 임시 데이터 정리
+  Future<void> _clearOnboardingTempData() async {
+    try {
+      // 경로 설정 관련 임시 데이터 제거
+      await _storage.remove('onboarding_departure');
+      await _storage.remove('onboarding_arrival');
+      await _storage.remove('onboarding_transfers');
+      
+      // 근무시간 설정 관련 임시 데이터 제거
+      await _storage.remove('onboarding_work_start_time');
+      await _storage.remove('onboarding_work_end_time');
+      await _storage.remove('onboarding_preparation_time');
+      
+      // 알림 설정 관련 임시 데이터 제거
+      await _storage.remove('onboarding_departure_notification');
+      await _storage.remove('onboarding_weather_notification');
+      
+      print('🧹 온보딩 임시 데이터 정리 완료');
+    } catch (e) {
+      print('온보딩 임시 데이터 정리 오류: $e');
     }
   }
 }

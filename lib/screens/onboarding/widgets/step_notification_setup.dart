@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import '../onboarding_controller.dart';
 
 class StepNotificationSetup extends GetView<OnboardingController> {
@@ -10,6 +11,9 @@ class StepNotificationSetup extends GetView<OnboardingController> {
     // 로컬 상태 관리
     final RxBool departureNotification = true.obs;
     final RxBool weatherNotification = true.obs;
+    
+    // 저장된 데이터 복원
+    _loadSavedNotificationData(departureNotification, weatherNotification);
     
     return Scaffold(
       body: Container(
@@ -322,6 +326,11 @@ class StepNotificationSetup extends GetView<OnboardingController> {
       child: GestureDetector(
         onTap: () {
           // 알림 설정을 컨트롤러에 저장
+          controller.setNotificationSettings(
+            departureNotification: departureNotification.value,
+            weatherNotification: weatherNotification.value,
+          );
+          
           // TODO: 알림 권한 요청 로직 추가
           
           // 온보딩 완료
@@ -361,5 +370,49 @@ class StepNotificationSetup extends GetView<OnboardingController> {
         ),
       ),
     );
+  }
+  
+  // 저장된 알림 설정 데이터 복원
+  void _loadSavedNotificationData(
+    RxBool departureNotification,
+    RxBool weatherNotification,
+  ) {
+    final storage = GetStorage();
+    
+    // 출발시간 알림 복원
+    final savedDepartureNotification = storage.read<bool>('onboarding_departure_notification');
+    if (savedDepartureNotification != null) {
+      departureNotification.value = savedDepartureNotification;
+      print('🔄 출발시간 알림 복원: $savedDepartureNotification');
+    }
+    
+    // 날씨 알림 복원
+    final savedWeatherNotification = storage.read<bool>('onboarding_weather_notification');
+    if (savedWeatherNotification != null) {
+      weatherNotification.value = savedWeatherNotification;
+      print('🔄 날씨 알림 복원: $savedWeatherNotification');
+    }
+    
+    // 데이터 변경 감지 및 자동 저장 설정
+    departureNotification.listen((value) => _saveNotificationData(departureNotification, weatherNotification));
+    weatherNotification.listen((value) => _saveNotificationData(departureNotification, weatherNotification));
+  }
+  
+  // 알림 설정 데이터 저장
+  void _saveNotificationData(
+    RxBool departureNotification,
+    RxBool weatherNotification,
+  ) {
+    final storage = GetStorage();
+    
+    // 출발시간 알림 저장
+    storage.write('onboarding_departure_notification', departureNotification.value);
+    
+    // 날씨 알림 저장
+    storage.write('onboarding_weather_notification', weatherNotification.value);
+    
+    print('💾 알림 설정 데이터 저장 완료');
+    print('   출발시간 알림: ${departureNotification.value}');
+    print('   날씨 알림: ${weatherNotification.value}');
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import '../onboarding_controller.dart';
 
 // LocationInfo 클래스 정의
@@ -22,10 +23,13 @@ class StepRouteSetup extends GetView<OnboardingController> {
 
   @override
   Widget build(BuildContext context) {
-    // 로컬 상태 관리
+    // 로컬 상태 관리 (GetStorage에서 복원)
     final RxnString selectedDeparture = RxnString();
     final RxList<LocationInfo> transferStations = <LocationInfo>[].obs;
     final RxnString selectedArrival = RxnString();
+    
+    // 저장된 데이터 복원
+    _loadSavedRouteData(selectedDeparture, transferStations, selectedArrival);
 
     return Scaffold(
       body: Container(
@@ -552,5 +556,91 @@ class StepRouteSetup extends GetView<OnboardingController> {
         );
       }),
     );
+  }
+  
+  // 저장된 경로 데이터 복원
+  void _loadSavedRouteData(
+    RxnString selectedDeparture,
+    RxList<LocationInfo> transferStations,
+    RxnString selectedArrival,
+  ) {
+    final storage = GetStorage();
+    
+    // 출발지 복원
+    final savedDeparture = storage.read<String>('onboarding_departure');
+    if (savedDeparture != null) {
+      selectedDeparture.value = savedDeparture;
+      print('🔄 출발지 복원: $savedDeparture');
+    }
+    
+    // 도착지 복원
+    final savedArrival = storage.read<String>('onboarding_arrival');
+    if (savedArrival != null) {
+      selectedArrival.value = savedArrival;
+      print('🔄 도착지 복원: $savedArrival');
+    }
+    
+    // 환승지들 복원
+    final savedTransfers = storage.read<List>('onboarding_transfers');
+    if (savedTransfers != null) {
+      transferStations.clear();
+      for (final transfer in savedTransfers) {
+        if (transfer is Map) {
+          transferStations.add(LocationInfo(
+            name: transfer['name'] ?? '',
+            type: transfer['type'] ?? 'subway',
+            lineInfo: transfer['lineInfo'] ?? '',
+            code: transfer['code'] ?? '',
+          ));
+        }
+      }
+      print('🔄 환승지 복원: ${transferStations.length}개');
+    }
+    
+    // 데이터 변경 감지 및 자동 저장 설정
+    selectedDeparture.listen((value) => _saveRouteData(selectedDeparture, transferStations, selectedArrival));
+    selectedArrival.listen((value) => _saveRouteData(selectedDeparture, transferStations, selectedArrival));
+    transferStations.listen((value) => _saveRouteData(selectedDeparture, transferStations, selectedArrival));
+  }
+  
+  // 경로 데이터 저장
+  void _saveRouteData(
+    RxnString selectedDeparture,
+    RxList<LocationInfo> transferStations,
+    RxnString selectedArrival,
+  ) {
+    final storage = GetStorage();
+    
+    // 출발지 저장
+    if (selectedDeparture.value != null) {
+      storage.write('onboarding_departure', selectedDeparture.value);
+    } else {
+      storage.remove('onboarding_departure');
+    }
+    
+    // 도착지 저장
+    if (selectedArrival.value != null) {
+      storage.write('onboarding_arrival', selectedArrival.value);
+    } else {
+      storage.remove('onboarding_arrival');
+    }
+    
+    // 환승지들 저장
+    if (transferStations.isNotEmpty) {
+      final transfersData = transferStations.map((transfer) => {
+        'name': transfer.name,
+        'type': transfer.type,
+        'lineInfo': transfer.lineInfo,
+        'code': transfer.code,
+      }).toList();
+      storage.write('onboarding_transfers', transfersData);
+    } else {
+      storage.remove('onboarding_transfers');
+    }
+    
+    print('💾 경로 데이터 저장 완료');
+    print('   출발지: ${selectedDeparture.value}');
+    print('   도착지: ${selectedArrival.value}');
+    print('   환승지: ${transferStations.length}개');
   }
 }

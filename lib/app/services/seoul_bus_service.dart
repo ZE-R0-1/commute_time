@@ -228,7 +228,6 @@ class SeoulBusService {
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
 
       print('📡 서울 도착정보 API 응답 상태: ${response.statusCode}');
-      print('📄 응답 내용 (첫 500자): ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

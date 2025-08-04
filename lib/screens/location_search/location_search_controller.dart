@@ -389,7 +389,7 @@ class LocationSearchController extends GetxController {
     if (mode.value.isEmpty) return;
 
     Get.back(result: {
-      'name': '${station.cleanStationName}역',
+      'name': station.placeName.isNotEmpty ? station.placeName : '${station.cleanStationName}역',
       'type': 'subway',
       'lineInfo': '지하철역',
       'code': station.id,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import '../onboarding_controller.dart';
 
 class StepWorkTimeSetup extends GetView<OnboardingController> {
@@ -12,6 +13,9 @@ class StepWorkTimeSetup extends GetView<OnboardingController> {
     final RxString workEndTime = '18:00'.obs;
     final RxInt preparationTime = 30.obs; // 분 단위
     final RxString editingMode = ''.obs; // 'start', 'end', 'preparation'
+    
+    // 저장된 데이터 복원
+    _loadSavedWorkTimeData(workStartTime, workEndTime, preparationTime);
 
     return Scaffold(
       body: Container(
@@ -536,7 +540,7 @@ class StepWorkTimeSetup extends GetView<OnboardingController> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '출근 전 준비하는 시간을 설정하세요',
+                  '출퇴근 전 준비하는 시간을 설정하세요',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey[600],
@@ -797,6 +801,9 @@ class StepWorkTimeSetup extends GetView<OnboardingController> {
               minute: int.parse(endTimeParts[1]),
             ),
           );
+          
+          // 준비시간도 저장
+          controller.setPreparationTime(preparationTime.value);
 
           // 다음 단계로 이동
           controller.nextStep();
@@ -835,5 +842,63 @@ class StepWorkTimeSetup extends GetView<OnboardingController> {
         ),
       ),
     );
+  }
+  
+  // 저장된 근무시간 데이터 복원
+  void _loadSavedWorkTimeData(
+    RxString workStartTime,
+    RxString workEndTime,
+    RxInt preparationTime,
+  ) {
+    final storage = GetStorage();
+    
+    // 출근시간 복원
+    final savedWorkStartTime = storage.read<String>('onboarding_work_start_time');
+    if (savedWorkStartTime != null) {
+      workStartTime.value = savedWorkStartTime;
+      print('🔄 출근시간 복원: $savedWorkStartTime');
+    }
+    
+    // 퇴근시간 복원
+    final savedWorkEndTime = storage.read<String>('onboarding_work_end_time');
+    if (savedWorkEndTime != null) {
+      workEndTime.value = savedWorkEndTime;
+      print('🔄 퇴근시간 복원: $savedWorkEndTime');
+    }
+    
+    // 준비시간 복원
+    final savedPreparationTime = storage.read<int>('onboarding_preparation_time');
+    if (savedPreparationTime != null) {
+      preparationTime.value = savedPreparationTime;
+      print('🔄 준비시간 복원: ${savedPreparationTime}분');
+    }
+    
+    // 데이터 변경 감지 및 자동 저장 설정
+    workStartTime.listen((value) => _saveWorkTimeData(workStartTime, workEndTime, preparationTime));
+    workEndTime.listen((value) => _saveWorkTimeData(workStartTime, workEndTime, preparationTime));
+    preparationTime.listen((value) => _saveWorkTimeData(workStartTime, workEndTime, preparationTime));
+  }
+  
+  // 근무시간 데이터 저장
+  void _saveWorkTimeData(
+    RxString workStartTime,
+    RxString workEndTime,
+    RxInt preparationTime,
+  ) {
+    final storage = GetStorage();
+    
+    // 출근시간 저장
+    storage.write('onboarding_work_start_time', workStartTime.value);
+    
+    // 퇴근시간 저장
+    storage.write('onboarding_work_end_time', workEndTime.value);
+    
+    // 준비시간 저장
+    storage.write('onboarding_preparation_time', preparationTime.value);
+    
+    print('💾 근무시간 데이터 저장 완료');
+    print('   출근시간: ${workStartTime.value}');
+    print('   퇴근시간: ${workEndTime.value}');
+    print('   준비시간: ${preparationTime.value}분');
   }
 }
