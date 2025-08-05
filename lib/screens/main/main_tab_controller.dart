@@ -13,9 +13,9 @@ class MainTabController extends GetxController {
       activeIcon: Icons.home,
     ),
     MainTabItem(
-      label: '실시간',
-      icon: Icons.train_outlined,
-      activeIcon: Icons.train,
+      label: '경로설정',
+      icon: Icons.route_outlined,
+      activeIcon: Icons.route,
     ),
     MainTabItem(
       label: '설정',
@@ -51,8 +51,8 @@ class MainTabController extends GetxController {
       // 🚫 자동 새로고침 제거 - _refreshHomeData() 호출 안함
         print('홈 탭으로 이동 (자동 새로고침 없음)');
         break;
-      case 1: // 실시간
-        _initializeRealtimeData();
+      case 1: // 경로설정
+        _initializeRouteSetupData();
         break;
       case 2: // 설정
         _loadSettingsData();
@@ -71,9 +71,9 @@ class MainTabController extends GetxController {
   //   }
   // }
 
-  void _initializeRealtimeData() {
-    print('실시간 교통정보 데이터 초기화');
-    // 실시간 교통정보 데이터 로딩
+  void _initializeRouteSetupData() {
+    print('경로 설정 데이터 초기화');
+    // 경로 설정 데이터 로딩
   }
 
 
@@ -91,7 +91,7 @@ class MainTabController extends GetxController {
       case 0:
         return '출퇴근 알리미';
       case 1:
-        return '실시간 교통정보';
+        return '경로 설정';
       case 2:
         return '설정';
       default:

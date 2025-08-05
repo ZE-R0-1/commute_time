@@ -417,7 +417,8 @@ class OnboardingController extends GetxController {
         print('위치 정보 없이 온보딩 완료');
       }
 
-      // 🆕 온보딩 임시 데이터 정리
+      // 🆕 경로 데이터를 영구 저장소로 복사 후 임시 데이터 정리
+      await _saveRouteDataPermanently();
       await _clearOnboardingTempData();
 
       print('=== 온보딩 완료 ===');
@@ -497,6 +498,39 @@ class OnboardingController extends GetxController {
     }
   }
 
+  // 🆕 경로 데이터를 영구 저장소로 복사
+  Future<void> _saveRouteDataPermanently() async {
+    try {
+      print('=== 경로 데이터 영구 저장 시작 ===');
+      
+      // 임시 저장소에서 경로 데이터 읽기
+      final tempDeparture = _storage.read<String>('onboarding_departure');
+      final tempArrival = _storage.read<String>('onboarding_arrival');
+      final tempTransfers = _storage.read<List>('onboarding_transfers');
+      
+      // 영구 저장소로 복사
+      if (tempDeparture != null) {
+        await _storage.write('saved_departure', tempDeparture);
+        print('출발지 영구 저장: $tempDeparture');
+      }
+      
+      if (tempArrival != null) {
+        await _storage.write('saved_arrival', tempArrival);
+        print('도착지 영구 저장: $tempArrival');
+      }
+      
+      if (tempTransfers != null && tempTransfers.isNotEmpty) {
+        await _storage.write('saved_transfers', tempTransfers);
+        print('환승지 영구 저장: ${tempTransfers.length}개');
+      }
+      
+      print('✅ 경로 데이터 영구 저장 완료');
+      
+    } catch (e) {
+      print('경로 데이터 영구 저장 오류: $e');
+    }
+  }
+
   // 🆕 온보딩 임시 데이터 정리
   Future<void> _clearOnboardingTempData() async {
     try {
@@ -519,4 +553,5 @@ class OnboardingController extends GetxController {
       print('온보딩 임시 데이터 정리 오류: $e');
     }
   }
+
 }

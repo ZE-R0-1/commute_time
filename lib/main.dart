@@ -34,37 +34,8 @@ void main() async {
   // 로컬 저장소 초기화
   await GetStorage.init();
 
-  // 테스트용: 앱 상태 초기화 (개발 중에만 사용)
-  final storage = GetStorage();
-
-  // 🆕 로그인 제거로 인한 설정 변경
-  // 테스트 시나리오 선택
-
-  // 1. 🔥 메인 화면(탭바) 테스트용 - 온보딩 완료 상태로 설정
-  storage.erase(); // 기존 데이터 삭제
-  storage.write('onboarding_completed', false);
-  storage.write('user_name', '김직장');
-  storage.write('work_start_time', '09:00');
-  storage.write('work_end_time', '18:00');
-  
-  // 테스트용 위치 정보 (신림역 기준)
-  storage.write('home_address', '서울특별시 관악구 신림역');
-  storage.write('work_address', '서울특별시 서초구 매봉산로 45');
-  storage.write('current_latitude', 37.4842);
-  storage.write('current_longitude', 126.9293);
-  storage.write('current_address', '서울특별시 관악구 신림역');
-  storage.write('home_latitude', 37.4842);
-  storage.write('home_longitude', 126.9293);
-  storage.write('work_latitude', 37.4739);
-  storage.write('work_longitude', 127.0178);
-  storage.write('location_permission_granted', true);
-
-  // 2. 온보딩 화면 테스트용 (위 코드 주석 처리하고 아래 코드 사용)
-  // storage.erase(); // 모든 데이터 삭제 (첫 실행 테스트)
-
   print('=== 앱 시작 ===');
   print('저장소 초기화 완료');
-  print('메인 화면(탭바) 테스트 모드');
 
   // 상태바 스타일 설정
   SystemChrome.setSystemUIOverlayStyle(

@@ -2,7 +2,7 @@ import 'package:get/get.dart';
 
 import 'main_tab_controller.dart';
 import '../home/home_controller.dart';
-import '../realtime/realtime_controller.dart';
+import '../route_setup/route_setup_controller.dart';
 import '../settings/settings_controller.dart';
 
 class MainTabBinding extends Bindings {
@@ -20,9 +20,9 @@ class MainTabBinding extends Bindings {
       permanent: true,
     );
 
-    // 실시간 교통정보 화면 컨트롤러
-    Get.lazyPut<RealtimeController>(
-          () => RealtimeController(),
+    // 경로 설정 화면 컨트롤러
+    Get.lazyPut<RouteSetupController>(
+          () => RouteSetupController(),
     );
 
 

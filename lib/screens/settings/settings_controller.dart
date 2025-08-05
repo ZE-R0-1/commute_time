@@ -46,7 +46,8 @@ class SettingsController extends GetxController {
     String endTime = _storage.read('work_end_time') ?? '18:00';
     workingHours.value = '$startTime - $endTime';
     
-    preparationTime.value = _storage.read('preparation_time') ?? '30분';
+    int prepTime = _storage.read('preparation_time') ?? 30;
+    preparationTime.value = '${prepTime}분';
     homeAddress.value = _storage.read('home_address') ?? '';
     workAddress.value = _storage.read('work_address') ?? '';
 
