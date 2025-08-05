@@ -178,7 +178,7 @@ class RouteSetupScreen extends GetView<RouteSetupController> {
                 ),
               ),
               // 수정 버튼
-              InkWell(
+              Obx(() => InkWell(
                 onTap: () {
                   controller.editRoute();
                 },
@@ -186,16 +186,20 @@ class RouteSetupScreen extends GetView<RouteSetupController> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: controller.isEditMode.value 
+                      ? const Color(0xFF10B981).withValues(alpha: 0.1)
+                      : Colors.grey[100],
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
-                    Icons.edit_outlined,
+                    controller.isEditMode.value ? Icons.check : Icons.edit_outlined,
                     size: 20,
-                    color: Colors.grey[600],
+                    color: controller.isEditMode.value 
+                      ? const Color(0xFF10B981)
+                      : Colors.grey[600],
                   ),
                 ),
-              ),
+              )),
             ],
           ),
           
@@ -203,36 +207,53 @@ class RouteSetupScreen extends GetView<RouteSetupController> {
           
           // 출발지
           if (controller.departure.value.isNotEmpty) ...[
-            _buildRouteItem(
+            Obx(() => _buildRouteItem(
               icon: Icons.location_on,
               iconColor: const Color(0xFF3B82F6),
               label: '출발지',
               value: controller.departure.value,
-            ),
+              isEditMode: controller.isEditMode.value,
+              onEdit: () => controller.editDeparture(),
+            )),
             const SizedBox(height: 12),
           ],
           
           // 환승지들
           if (controller.transfers.isNotEmpty) ...[
             for (int i = 0; i < controller.transfers.length; i++) ...[
-              _buildRouteItem(
+              Obx(() => _buildRouteItem(
                 icon: Icons.transfer_within_a_station,
                 iconColor: const Color(0xFFF97316),
                 label: '환승지 ${i + 1}',
                 value: controller.transfers[i],
-              ),
+                isEditMode: controller.isEditMode.value,
+                onEdit: () => controller.editTransfer(i),
+                onDelete: () => controller.deleteTransfer(i),
+                showDelete: true,
+              )),
               const SizedBox(height: 12),
             ],
           ],
           
+          // 환승지 추가 버튼 (수정 모드일 때만)
+          Obx(() => controller.isEditMode.value && controller.transfers.length < 3
+            ? Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _buildAddTransferButton(),
+              )
+            : const SizedBox.shrink(),
+          ),
+          
           // 도착지
           if (controller.arrival.value.isNotEmpty) ...[
-            _buildRouteItem(
+            Obx(() => _buildRouteItem(
               icon: Icons.flag,
               iconColor: const Color(0xFF10B981),
               label: '도착지',
               value: controller.arrival.value,
-            ),
+              isEditMode: controller.isEditMode.value,
+              onEdit: () => controller.editArrival(),
+            )),
           ],
         ],
       ),
@@ -244,6 +265,10 @@ class RouteSetupScreen extends GetView<RouteSetupController> {
     required Color iconColor,
     required String label,
     required String value,
+    bool isEditMode = false,
+    VoidCallback? onEdit,
+    VoidCallback? onDelete,
+    bool showDelete = false,
   }) {
     return Row(
       children: [
@@ -251,7 +276,7 @@ class RouteSetupScreen extends GetView<RouteSetupController> {
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.1),
+            color: iconColor.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -285,7 +310,86 @@ class RouteSetupScreen extends GetView<RouteSetupController> {
             ],
           ),
         ),
+        // 수정 모드일 때 버튼들 표시
+        if (isEditMode) ...[
+          const SizedBox(width: 8),
+          // 수정 버튼
+          InkWell(
+            onTap: onEdit,
+            borderRadius: BorderRadius.circular(6),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(
+                Icons.edit,
+                size: 16,
+                color: iconColor,
+              ),
+            ),
+          ),
+          // 삭제 버튼 (환승지만)
+          if (showDelete && onDelete != null) ...[
+            const SizedBox(width: 6),
+            InkWell(
+              onTap: onDelete,
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(
+                  Icons.delete,
+                  size: 16,
+                  color: Colors.red,
+                ),
+              ),
+            ),
+          ],
+        ],
       ],
+    );
+  }
+
+  Widget _buildAddTransferButton() {
+    return InkWell(
+      onTap: () => controller.addTransfer(),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF97316).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: const Color(0xFFF97316).withValues(alpha: 0.3),
+            width: 2,
+          ),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.add,
+              size: 18,
+              color: Color(0xFFF97316),
+            ),
+            SizedBox(width: 8),
+            Text(
+              '환승지 추가',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFFF97316),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
