@@ -364,13 +364,33 @@ class RouteSetupController extends GetxController {
     
     final newName = await Get.dialog<String>(
       AlertDialog(
-        title: const Text(
-          '경로 이름 변경',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+        title: Row(
+          children: [
+            Expanded(
+              child: const Text(
+                '경로 이름 변경',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            IconButton(
+              onPressed: () => Get.back(),
+              icon: const Icon(
+                Icons.close,
+                size: 20,
+                color: Colors.grey,
+              ),
+              padding: const EdgeInsets.all(4),
+              constraints: const BoxConstraints(
+                minWidth: 32,
+                minHeight: 32,
+              ),
+            ),
+          ],
         ),
+        titlePadding: const EdgeInsets.fromLTRB(24, 20, 16, 0),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -403,13 +423,6 @@ class RouteSetupController extends GetxController {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: Text(
-              '취소',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-          ),
           ElevatedButton(
             onPressed: () {
               final newName = textController.text.trim();
@@ -418,12 +431,13 @@ class RouteSetupController extends GetxController {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange,
               foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 44),
             ),
             child: const Text('변경'),
           ),
         ],
       ),
-      barrierDismissible: false,
+      barrierDismissible: true,
     );
     
     if (newName != null && newName != currentName) {
@@ -446,81 +460,20 @@ class RouteSetupController extends GetxController {
   void deleteRoute(String routeId, String routeName) async {
     print('경로 $routeId 삭제 요청');
     
-    // 삭제 확인 다이얼로그
-    final confirmed = await Get.dialog<bool>(
-      AlertDialog(
-        title: const Text(
-          '경로 삭제',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.warning_amber_rounded,
-              size: 48,
-              color: Colors.red,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '정말로 "$routeName" 경로를\n삭제하시겠습니까?',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[800],
-                height: 1.4,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '삭제된 경로는 복구할 수 없습니다.',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.red[600],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(result: false),
-            child: Text(
-              '취소',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Get.back(result: true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('삭제'),
-          ),
-        ],
-      ),
-      barrierDismissible: false,
-    );
-    
-    if (confirmed == true) {
-      final routeIndex = routesList.indexWhere((route) => route['id'] == routeId);
-      if (routeIndex != -1) {
-        // 수정 모드 해제 (삭제되는 경로가 현재 수정 중이면)
-        if (editingRouteId.value == routeId) {
-          editingRouteId.value = '';
-        }
-        
-        // 경로 목록에서 제거
-        routesList.removeAt(routeIndex);
-        
-        // 스토리지에 저장
-        _saveRoutesToStorage();
-        
-        print('경로 삭제 완료: $routeName');
+    final routeIndex = routesList.indexWhere((route) => route['id'] == routeId);
+    if (routeIndex != -1) {
+      // 수정 모드 해제 (삭제되는 경로가 현재 수정 중이면)
+      if (editingRouteId.value == routeId) {
+        editingRouteId.value = '';
       }
+      
+      // 경로 목록에서 제거
+      routesList.removeAt(routeIndex);
+      
+      // 스토리지에 저장
+      _saveRoutesToStorage();
+      
+      print('경로 삭제 완료: $routeName');
     }
   }
 
