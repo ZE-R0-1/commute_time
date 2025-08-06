@@ -30,18 +30,21 @@ class RouteSetupScreen extends GetView<RouteSetupController> {
               
               const SizedBox(height: 8),
               
-              Text(
-                '온보딩에서 설정한 경로 정보입니다',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
+              Obx(() {
+                final routeCount = controller.routesList.length;
+                return Text(
+                  routeCount > 0 ? '총 ${routeCount}개의 경로가 저장되어 있습니다' : '아직 저장된 경로가 없습니다',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                );
+              }),
               
               const SizedBox(height: 24),
               
-              // 경로 정보 카드
-              Obx(() => _buildRouteInfoCard()),
+              // 경로 목록
+              Obx(() => _buildRoutesList()),
             ],
           ),
         ),
@@ -355,9 +358,9 @@ class RouteSetupScreen extends GetView<RouteSetupController> {
     );
   }
 
-  Widget _buildAddTransferButton() {
+  Widget _buildAddTransferButton([VoidCallback? onTap]) {
     return InkWell(
-      onTap: () => controller.addTransfer(),
+      onTap: onTap ?? () => controller.addTransfer(),
       borderRadius: BorderRadius.circular(8),
       child: Container(
         width: double.infinity,
@@ -391,5 +394,280 @@ class RouteSetupScreen extends GetView<RouteSetupController> {
         ),
       ),
     );
+  }
+
+  Widget _buildRoutesList() {
+    if (controller.routesList.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey[200]!),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.info_outline,
+              size: 48,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '저장된 경로 없음',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '우측 하단의 + 버튼을 눌러\n새 경로를 추가해보세요',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: controller.routesList.map((route) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: _buildRouteCard(route),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildRouteCard(Map<String, dynamic> route) {
+    final routeId = route['id'] ?? '';
+    final routeName = route['name'] ?? '이름 없는 경로';
+    final departure = route['departure'] ?? '';
+    final arrival = route['arrival'] ?? '';
+    final transfers = route['transfers'] as List? ?? [];
+    final createdAt = route['createdAt'] as String?;
+    
+    DateTime? createdDate;
+    if (createdAt != null) {
+      try {
+        createdDate = DateTime.parse(createdAt);
+      } catch (e) {
+        // 파싱 실패시 무시
+      }
+    }
+
+    return Obx(() {
+      final isEditMode = controller.editingRouteId.value == routeId;
+      
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF2196F3).withOpacity(0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 헤더
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFF2196F3), // 파란색
+                        Color(0xFF3F51B5), // 인디고색
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.route,
+                    size: 24,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        routeName,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[800],
+                        ),
+                      ),
+                      Text(
+                        createdDate != null 
+                          ? '${createdDate.year}.${createdDate.month.toString().padLeft(2, '0')}.${createdDate.day.toString().padLeft(2, '0')} 추가됨'
+                          : '저장된 경로',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // 버튼들
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 삭제 버튼 (수정 모드일 때만)
+                    if (isEditMode) ...[
+                      InkWell(
+                        onTap: () {
+                          controller.deleteRoute(routeId, routeName);
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.delete_outline,
+                            size: 20,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // 이름 변경 버튼
+                      InkWell(
+                        onTap: () {
+                          controller.editRouteName(routeId, routeName);
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.edit_note,
+                            size: 20,
+                            color: Colors.orange,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    // 수정 버튼
+                    InkWell(
+                      onTap: () {
+                        controller.toggleEditMode(routeId);
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isEditMode 
+                            ? const Color(0xFF10B981).withValues(alpha: 0.1)
+                            : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          isEditMode ? Icons.check : Icons.edit_outlined,
+                          size: 20,
+                          color: isEditMode 
+                            ? const Color(0xFF10B981)
+                            : Colors.grey[600],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 20),
+            
+            // 출발지
+            if (departure.isNotEmpty) ...[
+              _buildRouteItem(
+                icon: Icons.location_on,
+                iconColor: const Color(0xFF3B82F6),
+                label: '출발지',
+                value: departure,
+                isEditMode: isEditMode,
+                onEdit: () => controller.editRouteLocation(routeId, 'departure'),
+              ),
+              const SizedBox(height: 12),
+            ],
+            
+            // 환승지들
+            if (transfers.isNotEmpty) ...[
+              for (int i = 0; i < transfers.length; i++) ...[
+                _buildRouteItem(
+                  icon: Icons.transfer_within_a_station,
+                  iconColor: const Color(0xFFF97316),
+                  label: '환승지 ${i + 1}',
+                  value: transfers[i]['name'] ?? '',
+                  isEditMode: isEditMode,
+                  onEdit: () => controller.editRouteTransfer(routeId, i),
+                  onDelete: () => controller.deleteRouteTransfer(routeId, i),
+                  showDelete: true,
+                ),
+                const SizedBox(height: 12),
+              ],
+            ],
+            
+            // 환승지 추가 버튼 (수정 모드일 때만)
+            if (isEditMode && transfers.length < 3) ...[
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _buildAddTransferButton(() => controller.addRouteTransfer(routeId)),
+              ),
+            ],
+            
+            // 도착지
+            if (arrival.isNotEmpty) ...[
+              _buildRouteItem(
+                icon: Icons.flag,
+                iconColor: const Color(0xFF10B981),
+                label: '도착지',
+                value: arrival,
+                isEditMode: isEditMode,
+                onEdit: () => controller.editRouteLocation(routeId, 'arrival'),
+              ),
+            ],
+          ],
+        ),
+      );
+    });
   }
 }
