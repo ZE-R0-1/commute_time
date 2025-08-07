@@ -63,205 +63,6 @@ class RouteSetupScreen extends GetView<RouteSetupController> {
     );
   }
 
-  Widget _buildRouteInfoCard() {
-    // 경로 정보가 있는지 확인
-    bool hasRouteData = controller.departure.value.isNotEmpty || 
-                       controller.arrival.value.isNotEmpty || 
-                       controller.transfers.isNotEmpty;
-
-    if (!hasRouteData) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey[200]!),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Icon(
-              Icons.info_outline,
-              size: 48,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '저장된 경로 없음',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[700],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '온보딩에서 경로를 설정하지 않았거나\n데이터가 삭제되었습니다',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-                height: 1.4,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2196F3).withOpacity(0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 헤더
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF2196F3), // 파란색
-                      Color(0xFF3F51B5), // 인디고색
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.route,
-                  size: 24,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '출퇴근 경로',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[800],
-                      ),
-                    ),
-                    Text(
-                      '온보딩에서 설정됨',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // 수정 버튼
-              Obx(() => InkWell(
-                onTap: () {
-                  controller.editRoute();
-                },
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: controller.isEditMode.value 
-                      ? const Color(0xFF10B981).withValues(alpha: 0.1)
-                      : Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    controller.isEditMode.value ? Icons.check : Icons.edit_outlined,
-                    size: 20,
-                    color: controller.isEditMode.value 
-                      ? const Color(0xFF10B981)
-                      : Colors.grey[600],
-                  ),
-                ),
-              )),
-            ],
-          ),
-          
-          const SizedBox(height: 20),
-          
-          // 출발지
-          if (controller.departure.value.isNotEmpty) ...[
-            Obx(() => _buildRouteItem(
-              icon: Icons.location_on,
-              iconColor: const Color(0xFF3B82F6),
-              label: '출발지',
-              value: controller.departure.value,
-              isEditMode: controller.isEditMode.value,
-              onEdit: () => controller.editDeparture(),
-            )),
-            const SizedBox(height: 12),
-          ],
-          
-          // 환승지들
-          if (controller.transfers.isNotEmpty) ...[
-            for (int i = 0; i < controller.transfers.length; i++) ...[
-              Obx(() => _buildRouteItem(
-                icon: Icons.transfer_within_a_station,
-                iconColor: const Color(0xFFF97316),
-                label: '환승지 ${i + 1}',
-                value: controller.transfers[i],
-                isEditMode: controller.isEditMode.value,
-                onEdit: () => controller.editTransfer(i),
-                onDelete: () => controller.deleteTransfer(i),
-                showDelete: true,
-              )),
-              const SizedBox(height: 12),
-            ],
-          ],
-          
-          // 환승지 추가 버튼 (수정 모드일 때만)
-          Obx(() => controller.isEditMode.value && controller.transfers.length < 3
-            ? Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _buildAddTransferButton(),
-              )
-            : const SizedBox.shrink(),
-          ),
-          
-          // 도착지
-          if (controller.arrival.value.isNotEmpty) ...[
-            Obx(() => _buildRouteItem(
-              icon: Icons.flag,
-              iconColor: const Color(0xFF10B981),
-              label: '도착지',
-              value: controller.arrival.value,
-              isEditMode: controller.isEditMode.value,
-              onEdit: () => controller.editArrival(),
-            )),
-          ],
-        ],
-      ),
-    );
-  }
 
   Widget _buildRouteItem({
     required IconData icon,
@@ -358,9 +159,9 @@ class RouteSetupScreen extends GetView<RouteSetupController> {
     );
   }
 
-  Widget _buildAddTransferButton([VoidCallback? onTap]) {
+  Widget _buildAddTransferButton(VoidCallback onTap) {
     return InkWell(
-      onTap: onTap ?? () => controller.addTransfer(),
+      onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
         width: double.infinity,
@@ -495,49 +296,14 @@ class RouteSetupScreen extends GetView<RouteSetupController> {
             // 헤더
             Row(
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF2196F3), // 파란색
-                        Color(0xFF3F51B5), // 인디고색
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.route,
-                    size: 24,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 16),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        routeName,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[800],
-                        ),
-                      ),
-                      Text(
-                        createdDate != null 
-                          ? '${createdDate.year}.${createdDate.month.toString().padLeft(2, '0')}.${createdDate.day.toString().padLeft(2, '0')} 추가됨'
-                          : '저장된 경로',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    routeName,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
+                    ),
                   ),
                 ),
                 // 버튼들
@@ -633,7 +399,7 @@ class RouteSetupScreen extends GetView<RouteSetupController> {
             if (transfers.isNotEmpty) ...[
               for (int i = 0; i < transfers.length; i++) ...[
                 _buildRouteItem(
-                  icon: Icons.transfer_within_a_station,
+                  icon: Icons.swap_horiz,
                   iconColor: const Color(0xFFF97316),
                   label: '환승지 ${i + 1}',
                   value: transfers[i]['name'] ?? '',

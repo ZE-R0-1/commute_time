@@ -508,20 +508,22 @@ class OnboardingController extends GetxController {
       final tempArrival = _storage.read<String>('onboarding_arrival');
       final tempTransfers = _storage.read<List>('onboarding_transfers');
       
-      // 영구 저장소로 복사
-      if (tempDeparture != null) {
-        await _storage.write('saved_departure', tempDeparture);
-        print('출발지 영구 저장: $tempDeparture');
-      }
-      
-      if (tempArrival != null) {
-        await _storage.write('saved_arrival', tempArrival);
-        print('도착지 영구 저장: $tempArrival');
-      }
-      
-      if (tempTransfers != null && tempTransfers.isNotEmpty) {
-        await _storage.write('saved_transfers', tempTransfers);
-        print('환승지 영구 저장: ${tempTransfers.length}개');
+      // 경로 데이터가 있는 경우에만 저장
+      if (tempDeparture != null && tempArrival != null) {
+        // 새로운 배열 구조로 저장
+        final routeName = '$tempDeparture → $tempArrival';
+        final newRoute = {
+          'id': DateTime.now().millisecondsSinceEpoch.toString(),
+          'name': routeName,
+          'departure': tempDeparture,
+          'arrival': tempArrival,
+          'transfers': tempTransfers ?? [],
+          'createdAt': DateTime.now().toIso8601String(),
+        };
+        
+        final savedRoutes = [newRoute];
+        await _storage.write('saved_routes', savedRoutes);
+        print('📋 온보딩 경로 저장: $routeName');
       }
       
       print('✅ 경로 데이터 영구 저장 완료');

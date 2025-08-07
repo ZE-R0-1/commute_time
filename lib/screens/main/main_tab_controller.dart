@@ -14,8 +14,8 @@ class MainTabController extends GetxController {
     ),
     MainTabItem(
       label: '경로설정',
-      icon: Icons.route_outlined,
-      activeIcon: Icons.route,
+      icon: Icons.flag_outlined,
+      activeIcon: Icons.flag,
     ),
     MainTabItem(
       label: '설정',

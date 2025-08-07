@@ -9,14 +9,6 @@ class RouteSetupController extends GetxController {
   // 경로 목록
   final RxList<Map<String, dynamic>> routesList = <Map<String, dynamic>>[].obs;
   
-  // 온보딩에서 저장한 경로 정보 (호환성 유지용)
-  final RxString departure = ''.obs;
-  final RxString arrival = ''.obs;
-  final RxList<String> transfers = <String>[].obs;
-  
-  // 수정 모드 상태
-  final RxBool isEditMode = false.obs;
-  
   // 현재 수정 중인 경로 ID
   final RxString editingRouteId = ''.obs;
 
@@ -39,11 +31,11 @@ class RouteSetupController extends GetxController {
     super.onClose();
   }
 
-  // 온보딩에서 저장한 경로 데이터 로드 (영구 저장소에서)
+  // 저장된 경로 데이터 로드
   void _loadOnboardingRouteData() {
-    print('=== 온보딩 경로 데이터 로딩 ===');
+    print('=== 경로 데이터 로딩 ===');
 
-    // 새로운 경로 목록 구조 확인
+    // 경로 목록 구조 확인
     final savedRoutes = _storage.read<List>('saved_routes');
     if (savedRoutes != null && savedRoutes.isNotEmpty) {
       // 경로 목록 업데이트
@@ -52,56 +44,13 @@ class RouteSetupController extends GetxController {
         savedRoutes.map((route) => Map<String, dynamic>.from(route as Map))
       );
       
-      // 첫 번째 경로를 기본 경로로 사용 (호환성 유지)
-      final firstRoute = routesList.first;
-      departure.value = firstRoute['departure'] ?? '';
-      arrival.value = firstRoute['arrival'] ?? '';
-      
-      // 환승지들 로드
-      final routeTransfers = firstRoute['transfers'] as List? ?? [];
-      transfers.clear();
-      for (final transfer in routeTransfers) {
-        if (transfer is Map && transfer['name'] != null) {
-          transfers.add(transfer['name']);
-        }
-      }
-      
       print('📋 경로 목록 로딩 완료 (총 ${routesList.length}개 경로)');
       for (var route in routesList) {
         print('  - ${route['name']}: ${route['departure']} → ${route['arrival']}');
       }
-      return;
-    }
-
-    // 기존 단일 경로 구조 확인 (호환성 유지)
-    final savedDeparture = _storage.read<String>('saved_departure');
-    if (savedDeparture != null) {
-      departure.value = savedDeparture;
-      print('출발지: $savedDeparture');
-    }
-
-    final savedArrival = _storage.read<String>('saved_arrival');
-    if (savedArrival != null) {
-      arrival.value = savedArrival;
-      print('도착지: $savedArrival');
-    }
-
-    final savedTransfers = _storage.read<List>('saved_transfers');
-    if (savedTransfers != null) {
-      transfers.clear();
-      for (final transfer in savedTransfers) {
-        if (transfer is Map && transfer['name'] != null) {
-          transfers.add(transfer['name']);
-        }
-      }
-      print('환승지: ${transfers.length}개 - ${transfers.join(', ')}');
-    }
-
-    if (departure.value.isEmpty && arrival.value.isEmpty && transfers.isEmpty) {
+    } else {
       print('저장된 경로 정보가 없습니다.');
       routesList.clear();
-    } else {
-      print('경로 정보 로딩 완료');
     }
   }
 
@@ -126,98 +75,6 @@ class RouteSetupController extends GetxController {
     });
   }
 
-  // 경로 수정 버튼 클릭 시
-  void editRoute() {
-    print('경로 수정 버튼 클릭');
-    isEditMode.value = !isEditMode.value;
-    print(isEditMode.value ? '수정 모드 활성화' : '수정 모드 비활성화');
-  }
-
-  // 출발지 수정
-  void editDeparture() async {
-    print('출발지 수정 버튼 클릭');
-    
-    final result = await Get.toNamed('/location-search', arguments: {
-      'mode': 'departure',
-      'title': '출발지 수정'
-    });
-    
-    if (result != null && result['name'] != null) {
-      departure.value = result['name'];
-      await _storage.write('saved_departure', result['name']);
-      
-      print('출발지 수정 완료: ${result['name']}');
-    }
-  }
-
-  // 도착지 수정
-  void editArrival() async {
-    print('도착지 수정 버튼 클릭');
-    
-    final result = await Get.toNamed('/location-search', arguments: {
-      'mode': 'arrival',
-      'title': '도착지 수정'
-    });
-    
-    if (result != null && result['name'] != null) {
-      arrival.value = result['name'];
-      await _storage.write('saved_arrival', result['name']);
-      
-      print('도착지 수정 완료: ${result['name']}');
-    }
-  }
-
-  // 환승지 수정
-  void editTransfer(int index) async {
-    print('환승지 $index 수정 버튼 클릭');
-    
-    final result = await Get.toNamed('/location-search', arguments: {
-      'mode': 'transfer',
-      'title': '환승지 ${index + 1} 수정'
-    });
-    
-    if (result != null && result['name'] != null) {
-      transfers[index] = result['name'];
-      
-      // 환승지 데이터를 맵 형태로 저장
-      final transfersData = transfers.map((name) => {'name': name}).toList();
-      await _storage.write('saved_transfers', transfersData);
-      
-      print('환승지 $index 수정 완료: ${result['name']}');
-    }
-  }
-
-  // 환승지 삭제
-  void deleteTransfer(int index) async {
-    print('환승지 $index 삭제');
-    
-    final transferName = transfers[index];
-    transfers.removeAt(index);
-    
-    // 환승지 데이터를 맵 형태로 저장
-    final transfersData = transfers.map((name) => {'name': name}).toList();
-    await _storage.write('saved_transfers', transfersData);
-  }
-
-  // 환승지 추가
-  void addTransfer() async {
-    print('환승지 추가 버튼 클릭');
-    
-    final result = await Get.toNamed('/location-search', arguments: {
-      'mode': 'transfer',
-      'title': '환승지 추가'
-    });
-    
-    if (result != null && result['name'] != null) {
-      transfers.add(result['name']);
-      
-      // 환승지 데이터를 맵 형태로 저장
-      final transfersData = transfers.map((name) => {'name': name}).toList();
-      await _storage.write('saved_transfers', transfersData);
-      
-      print('환승지 추가 완료: ${result['name']}');
-    }
-  }
 
   // 특정 경로의 수정 모드 토글
   void toggleEditMode(String routeId) {

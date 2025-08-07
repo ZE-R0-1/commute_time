@@ -39,11 +39,6 @@ class SettingsScreen extends GetView<SettingsController> {
 
             const SizedBox(height: 24),
 
-            // 경로 설정 섹션
-            _buildRouteSection(),
-
-            const SizedBox(height: 24),
-
             // 앱 설정 섹션
             _buildAppSettingsSection(),
 
@@ -180,35 +175,6 @@ class SettingsScreen extends GetView<SettingsController> {
     );
   }
 
-  // 경로 설정 섹션
-  Widget _buildRouteSection() {
-    return _buildSection(
-      title: '경로 설정',
-      children: [
-        // 집 → 회사 경로
-        Obx(() => _buildNavigationItem(
-          icon: Icons.home_work,
-          iconColor: Colors.blue,
-          title: '집 → 회사 경로',
-          subtitle: '출근 시 사용할 경로를 설정하세요',
-          value: controller.homeToWorkRoute.value,
-          onTap: (){},
-        )),
-
-        _buildDivider(),
-
-        // 회사 → 집 경로
-        Obx(() => _buildNavigationItem(
-          icon: Icons.work_history,
-          iconColor: Colors.orange,
-          title: '회사 → 집 경로',
-          subtitle: '퇴근 시 사용할 경로를 설정하세요',
-          value: controller.workToHomeRoute.value,
-          onTap: (){},
-        )),
-      ],
-    );
-  }
 
   // 섹션 빌더
   Widget _buildSection({
