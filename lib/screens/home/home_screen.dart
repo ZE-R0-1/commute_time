@@ -130,18 +130,11 @@ class HomeScreen extends GetView<HomeController> {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF4FC3F7), // 하늘색
-              Color(0xFF29B6F6), // 진한 하늘색
-            ],
-          ),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF4FC3F7).withValues(alpha: 0.2),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -154,16 +147,16 @@ class HomeScreen extends GetView<HomeController> {
               children: [
                 Icon(
                   Icons.location_on,
-                  color: Colors.white.withValues(alpha: 0.8),
+                  color: Colors.grey[600],
                   size: 16,
                 ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     controller.currentAddress.value,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: Colors.white,
+                      color: Colors.grey[700],
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -175,7 +168,7 @@ class HomeScreen extends GetView<HomeController> {
                     padding: const EdgeInsets.all(4),
                     child: Icon(
                       Icons.refresh,
-                      color: Colors.white.withValues(alpha: 0.8),
+                      color: Colors.grey[600],
                       size: 16,
                     ),
                   ),
@@ -183,179 +176,106 @@ class HomeScreen extends GetView<HomeController> {
               ],
             ),
             
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             
-            // 현재 날씨 정보
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // 날씨 아이콘과 상태
-                Row(
-                  children: [
-                    Text(
-                      controller.getWeatherIcon(controller.currentWeather.value),
-                      style: const TextStyle(fontSize: 28),
-                    ),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          controller.getWeatherStatusText(controller.currentWeather.value),
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '습도 ${controller.currentWeather.value?.humidity ?? 0}%',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.white.withValues(alpha: 0.8),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                
-                // 온도
-                Text(
-                  '${controller.currentWeather.value?.temperature.round() ?? '--'}°',
-                  style: const TextStyle(
-                    fontSize: 28,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    height: 1.0,
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // 구분선
-            Container(
-              height: 1,
-              color: Colors.white.withValues(alpha: 0.3),
-            ),
-            
-            const SizedBox(height: 12),
-            
-            // 다음 6시간 예보
-            _buildHourlyForecast(),
+            // 한 줄 스크롤 날씨 예보
+            _buildHorizontalWeatherForecast(),
           ],
         ),
       );
     });
   }
 
-  // 시간별 날씨 예보
-  Widget _buildHourlyForecast() {
+  // 한 줄 날씨 예보 (횡스크롤)
+  Widget _buildHorizontalWeatherForecast() {
     if (controller.weatherForecast.isEmpty) {
       return const SizedBox.shrink();
     }
 
     final now = DateTime.now();
-    final next6Hours = controller.weatherForecast.where((forecast) =>
-      forecast.dateTime.isAfter(now) &&
-      forecast.dateTime.isBefore(now.add(const Duration(hours: 7)))
-    ).take(6).toList();
+    
+    // 현재 시간과 향후 예보 데이터 가져오기
+    final currentForecast = controller.weatherForecast
+        .where((f) => f.dateTime.hour == now.hour && 
+                     f.dateTime.day == now.day)
+        .firstOrNull;
+    
+    final futureForecasts = controller.weatherForecast
+        .where((forecast) => forecast.dateTime.isAfter(now))
+        .take(20) // 최대 20개 예보 표시
+        .toList();
 
-    if (next6Hours.isEmpty) {
+    List<WeatherForecast> allForecasts = [];
+    if (currentForecast != null) {
+      allForecasts.add(currentForecast);
+    }
+    allForecasts.addAll(futureForecasts);
+
+    if (allForecasts.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '다음 ${next6Hours.length}시간 예보:',
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.white.withValues(alpha: 0.9),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 8),
-        
-        // 시간 행
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: next6Hours.map((forecast) => 
-            Expanded(
-              child: Text(
-                '${forecast.dateTime.hour}시',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontWeight: FontWeight.w500,
+    return SizedBox(
+      height: 92,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: allForecasts.length,
+        itemBuilder: (context, index) {
+          final forecast = allForecasts[index];
+          final isCurrentHour = index == 0 && currentForecast != null;
+          
+          return Container(
+            width: 52,
+            margin: const EdgeInsets.only(right: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 시간 표시
+                Text(
+                  isCurrentHour ? '현재' : '${forecast.dateTime.hour}시',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isCurrentHour ? Colors.blue[700] : Colors.grey[600],
+                    fontWeight: isCurrentHour ? FontWeight.bold : FontWeight.w500,
+                  ),
                 ),
-              ),
-            ),
-          ).toList(),
-        ),
-        
-        const SizedBox(height: 4),
-        
-        // 온도 행
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: next6Hours.map((forecast) => 
-            Expanded(
-              child: Text(
-                '${forecast.temperature.round()}°',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
+
+                const SizedBox(height: 4),
+
+                // 날씨 아이콘
+                Text(
+                  controller.getWeatherIconForForecast(forecast),
+                  style: const TextStyle(fontSize: 18),
                 ),
-              ),
-            ),
-          ).toList(),
-        ),
-        
-        const SizedBox(height: 6),
-        
-        // 날씨 아이콘 행
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: next6Hours.map((forecast) => 
-            Expanded(
-              child: Text(
-                controller.getWeatherIconForForecast(forecast),
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16),
-              ),
-            ),
-          ).toList(),
-        ),
-        
-        const SizedBox(height: 4),
-        
-        // 습도 행
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: next6Hours.map((forecast) => 
-            Expanded(
-              child: Text(
-                '${forecast.humidity}%',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontWeight: FontWeight.w400,
+
+                const SizedBox(height: 4),
+
+                // 온도
+                Text(
+                  '${forecast.temperature.round()}°',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isCurrentHour ? Colors.blue[700] : Colors.grey[800],
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
+
+                const SizedBox(height: 2),
+
+                // 습도
+                Text(
+                  '${forecast.humidity}%',
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: Colors.grey[500],
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
             ),
-          ).toList(),
-        ),
-      ],
+          );
+        },
+      ),
     );
   }
 

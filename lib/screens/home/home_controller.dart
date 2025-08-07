@@ -196,23 +196,34 @@ class HomeController extends GetxController {
     }
   }
 
-  // 실제 날씨 데이터 가져오기
+  // 실제 날씨 데이터 가져오기 (예보 데이터만 사용)
   Future<void> _fetchWeatherData(double lat, double lon) async {
     try {
       print('날씨 API 호출 시작: $lat, $lon');
 
-      // 현재 날씨 조회
-      final weather = await WeatherService.getCurrentWeather(lat, lon);
-      if (weather != null) {
-        currentWeather.value = weather;
-        print('현재 날씨 로드 성공: ${weather.temperature}°C, ${weather.weatherDescription}');
-      }
-
-      // 날씨 예보 조회
+      // 날씨 예보 조회 (예보 데이터로 현재 날씨도 추출)
       final forecasts = await WeatherService.getWeatherForecast(lat, lon);
       if (forecasts.isNotEmpty) {
         weatherForecast.value = forecasts;
         print('날씨 예보 로드 성공: ${forecasts.length}개 항목');
+
+        // 현재 시간과 가장 가까운 예보 데이터를 현재 날씨로 사용
+        final now = DateTime.now();
+        final currentForecast = forecasts
+            .where((f) => f.dateTime.isAtSameMomentAs(now) || f.dateTime.isAfter(now))
+            .firstOrNull;
+        
+        if (currentForecast != null) {
+          // 예보 데이터를 현재 날씨로 변환
+          currentWeather.value = WeatherInfo(
+            temperature: currentForecast.temperature,
+            humidity: currentForecast.humidity,
+            precipitation: currentForecast.precipitation,
+            skyCondition: currentForecast.skyCondition,
+            precipitationType: currentForecast.precipitationType,
+          );
+          print('현재 날씨 (예보 기반) 설정 성공: ${currentForecast.temperature}°C');
+        }
 
         // 비 예보 분석
         final rainInfo = WeatherService.analyzeTodayRainForecast(forecasts);

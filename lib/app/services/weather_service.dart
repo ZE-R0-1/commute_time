@@ -97,7 +97,7 @@ class WeatherService {
       final url = Uri.parse('$_baseUrl/getVilageFcst').replace(queryParameters: {
         'serviceKey': _apiKey,
         'pageNo': '1',
-        'numOfRows': '100', // 3일치 데이터
+        'numOfRows': '300',
         'dataType': 'JSON',
         'base_date': baseDate,
         'base_time': baseTime,
@@ -343,6 +343,7 @@ class WeatherService {
           int.parse(date.substring(6, 8)),
           int.parse(time.substring(0, 2)),
         );
+
 
         forecasts.add(WeatherForecast(
           dateTime: forecastDateTime,
