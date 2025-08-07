@@ -14,15 +14,15 @@ class MainTabScreen extends GetView<MainTabController> {
     return Scaffold(
       body: Obx(() => IndexedStack(
         index: controller.currentIndex.value,
-        children: [
+        children: const [
           // 홈 화면
-          const HomeScreen(),
+          HomeScreen(),
 
           // 경로 설정 화면
-          const RouteSetupScreen(),
+          RouteSetupScreen(),
 
           // 설정 화면
-          const SettingsScreen(),
+          SettingsScreen(),
         ],
       )),
 

@@ -6,15 +6,12 @@ class SettingsController extends GetxController {
   final GetStorage _storage = GetStorage();
 
   // 알림 설정
-  final RxBool departureTimeNotification = true.obs;
   final RxBool weatherNotification = true.obs;
-  final RxBool trafficNotification = true.obs;
 
-  // 개인화 설정 (온보딩에서 설정한 내용들)
-  final RxString workingHours = '9:00 - 18:00'.obs;
+  // 근무시간 설정 (온보딩에서 설정한 내용들과 연동)
+  final RxString workStartTime = '09:00'.obs;
+  final RxString workEndTime = '18:00'.obs;
   final RxString preparationTime = '30분'.obs;
-  final RxString homeAddress = ''.obs;
-  final RxString workAddress = ''.obs;
 
   // 경로 설정
   final RxString homeToWorkRoute = '미설정'.obs;
@@ -36,20 +33,14 @@ class SettingsController extends GetxController {
     print('=== 설정 데이터 로딩 ===');
 
     // 알림 설정 로드
-    departureTimeNotification.value = _storage.read('departure_notification') ?? true;
     weatherNotification.value = _storage.read('weather_notification') ?? true;
-    trafficNotification.value = _storage.read('traffic_notification') ?? true;
 
-    // 개인화 설정 로드 (온보딩에서 설정한 내용들)
-    // 근무시간은 온보딩에서 저장한 키를 사용
-    String startTime = _storage.read('work_start_time') ?? '09:00';
-    String endTime = _storage.read('work_end_time') ?? '18:00';
-    workingHours.value = '$startTime - $endTime';
+    // 근무시간 설정 로드 (온보딩에서 설정한 내용들과 연동)
+    workStartTime.value = _storage.read('work_start_time') ?? '09:00';
+    workEndTime.value = _storage.read('work_end_time') ?? '18:00';
     
     int prepTime = _storage.read('preparation_time') ?? 30;
     preparationTime.value = '${prepTime}분';
-    homeAddress.value = _storage.read('home_address') ?? '';
-    workAddress.value = _storage.read('work_address') ?? '';
 
     // 경로 설정 로드
     homeToWorkRoute.value = _storage.read('home_to_work_route') ?? '미설정';
@@ -59,28 +50,14 @@ class SettingsController extends GetxController {
     darkMode.value = _storage.read('dark_mode') ?? false;
     isPremium.value = _storage.read('is_premium') ?? false;
 
-    print('출발 알림: ${departureTimeNotification.value}');
     print('날씨 알림: ${weatherNotification.value}');
-    print('교통 알림: ${trafficNotification.value}');
     print('다크모드: ${darkMode.value}');
-    print('집 주소: ${homeAddress.value}');
-    print('회사 주소: ${workAddress.value}');
+    print('출근 시간: ${workStartTime.value}');
+    print('퇴근 시간: ${workEndTime.value}');
+    print('준비 시간: ${preparationTime.value}');
   }
 
   // 알림 설정 토글
-  void toggleDepartureNotification(bool value) {
-    departureTimeNotification.value = value;
-    _storage.write('departure_notification', value);
-
-    _showNotificationChangedSnackbar(
-      '출발 시간 알림',
-      value ? '활성화' : '비활성화',
-      value,
-    );
-
-    print('출발 시간 알림 ${value ? '활성화' : '비활성화'}');
-  }
-
   void toggleWeatherNotification(bool value) {
     weatherNotification.value = value;
     _storage.write('weather_notification', value);
@@ -92,19 +69,6 @@ class SettingsController extends GetxController {
     );
 
     print('날씨 알림 ${value ? '활성화' : '비활성화'}');
-  }
-
-  void toggleTrafficNotification(bool value) {
-    trafficNotification.value = value;
-    _storage.write('traffic_notification', value);
-
-    _showNotificationChangedSnackbar(
-      '교통 장애 알림',
-      value ? '활성화' : '비활성화',
-      value,
-    );
-
-    print('교통 장애 알림 ${value ? '활성화' : '비활성화'}');
   }
 
   // 다크모드 토글
@@ -133,259 +97,71 @@ class SettingsController extends GetxController {
     print('다크모드 ${value ? '활성화' : '비활성화'}');
   }
 
-  // 근무 시간 설정
-  void changeWorkingHours() {
-    _showWorkingHoursDialog();
-  }
-
-  void _showWorkingHoursDialog() {
-    // 현재 설정된 시간 파싱
-    List<String> currentTimes = workingHours.value.split(' - ');
-    TimeOfDay startTime = TimeOfDay(hour: 9, minute: 0);
-    TimeOfDay endTime = TimeOfDay(hour: 18, minute: 0);
+  // 출근 시간 설정
+  void changeWorkStartTime() async {
+    // 현재 시간 파싱
+    List<String> timeParts = workStartTime.value.split(':');
+    TimeOfDay currentTime = TimeOfDay(
+      hour: int.tryParse(timeParts[0]) ?? 9,
+      minute: int.tryParse(timeParts[1]) ?? 0,
+    );
     
-    if (currentTimes.length == 2) {
-      try {
-        List<String> startParts = currentTimes[0].split(':');
-        List<String> endParts = currentTimes[1].split(':');
-        startTime = TimeOfDay(hour: int.parse(startParts[0]), minute: int.parse(startParts[1]));
-        endTime = TimeOfDay(hour: int.parse(endParts[0]), minute: int.parse(endParts[1]));
-      } catch (e) {
-        print('시간 파싱 오류: $e');
-      }
+    final TimeOfDay? picked = await showTimePicker(
+      context: Get.context!,
+      initialTime: currentTime,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+          child: child!,
+        );
+      },
+    );
+    
+    if (picked != null) {
+      String newTime = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+      workStartTime.value = newTime;
+      
+      // 온보딩과 동일한 키로 저장
+      _storage.write('work_start_time', newTime);
+      
+      print('출근 시간 변경: $newTime');
     }
-
-    Get.dialog(
-      AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.access_time, color: Colors.green),
-            SizedBox(width: 8),
-            Text('근무 시간 설정'),
-          ],
-        ),
-        content: StatefulBuilder(
-          builder: (context, setState) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 출근 시간
-                ListTile(
-                  leading: const Icon(Icons.login, color: Colors.blue),
-                  title: const Text('출근 시간'),
-                  subtitle: Text('${startTime.format(Get.context!)}'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () async {
-                    final TimeOfDay? picked = await showTimePicker(
-                      context: Get.context!,
-                      initialTime: startTime,
-                      builder: (context, child) {
-                        return MediaQuery(
-                          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
-                          child: child!,
-                        );
-                      },
-                    );
-                    if (picked != null) {
-                      setState(() {
-                        startTime = picked;
-                      });
-                    }
-                  },
-                ),
-                const Divider(),
-                // 퇴근 시간
-                ListTile(
-                  leading: const Icon(Icons.logout, color: Colors.red),
-                  title: const Text('퇴근 시간'),
-                  subtitle: Text('${endTime.format(Get.context!)}'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () async {
-                    final TimeOfDay? picked = await showTimePicker(
-                      context: Get.context!,
-                      initialTime: endTime,
-                      builder: (context, child) {
-                        return MediaQuery(
-                          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
-                          child: child!,
-                        );
-                      },
-                    );
-                    if (picked != null) {
-                      setState(() {
-                        endTime = picked;
-                      });
-                    }
-                  },
-                ),
-              ],
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('취소'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              // 24시간 형식으로 저장
-              String startTimeStr = '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}';
-              String endTimeStr = '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}';
-              String newWorkingHours = '$startTimeStr - $endTimeStr';
-              
-              workingHours.value = newWorkingHours;
-              // 온보딩과 동일한 키로 저장
-              _storage.write('work_start_time', startTimeStr);
-              _storage.write('work_end_time', endTimeStr);
-              _storage.write('working_hours', newWorkingHours); // 호환성을 위해 추가 저장
-              
-              Get.back();
-              
-              Get.snackbar(
-                '근무 시간 변경 완료',
-                '근무 시간이 $newWorkingHours로 설정되었습니다.',
-                snackPosition: SnackPosition.TOP,
-                backgroundColor: Colors.green,
-                colorText: Colors.white,
-                margin: const EdgeInsets.all(16),
-                borderRadius: 12,
-                duration: const Duration(seconds: 2),
-                icon: const Icon(Icons.access_time, color: Colors.white),
-              );
-              
-              print('근무 시간 변경: $newWorkingHours');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('저장'),
-          ),
-        ],
-      ),
+  }
+  
+  // 퇴근 시간 설정
+  void changeWorkEndTime() async {
+    // 현재 시간 파싱
+    List<String> timeParts = workEndTime.value.split(':');
+    TimeOfDay currentTime = TimeOfDay(
+      hour: int.tryParse(timeParts[0]) ?? 18,
+      minute: int.tryParse(timeParts[1]) ?? 0,
     );
-  }
-
-  // 집 주소 설정
-  void changeHomeAddress() {
-    _showAddressEditDialog('집 주소', homeAddress.value, (newAddress) {
-      homeAddress.value = newAddress;
-      _storage.write('home_address', newAddress);
-      
-      Get.snackbar(
-        '집 주소 변경 완료',
-        '집 주소가 변경되었습니다.',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.blue,
-        colorText: Colors.white,
-        margin: const EdgeInsets.all(16),
-        borderRadius: 12,
-        duration: const Duration(seconds: 2),
-        icon: const Icon(Icons.home, color: Colors.white),
-      );
-      
-      print('집 주소 변경: $newAddress');
-    });
-  }
-
-  // 회사 주소 설정
-  void changeWorkAddress() {
-    _showAddressEditDialog('회사 주소', workAddress.value, (newAddress) {
-      workAddress.value = newAddress;
-      _storage.write('work_address', newAddress);
-      
-      Get.snackbar(
-        '회사 주소 변경 완료',
-        '회사 주소가 변경되었습니다.',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-        margin: const EdgeInsets.all(16),
-        borderRadius: 12,
-        duration: const Duration(seconds: 2),
-        icon: const Icon(Icons.business, color: Colors.white),
-      );
-      
-      print('회사 주소 변경: $newAddress');
-    });
-  }
-
-  void _showAddressEditDialog(String title, String currentAddress, Function(String) onSave) {
-    final addressController = TextEditingController(text: currentAddress);
-
-    Get.dialog(
-      AlertDialog(
-        title: Row(
-          children: [
-            Icon(
-              title.contains('집') ? Icons.home : Icons.business,
-              color: title.contains('집') ? Colors.blue : Colors.orange,
-            ),
-            const SizedBox(width: 8),
-            Text(title),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: addressController,
-              decoration: InputDecoration(
-                labelText: '$title을 입력하세요',
-                prefixIcon: Icon(
-                  title.contains('집') ? Icons.home_outlined : Icons.business_outlined,
-                ),
-                border: const OutlineInputBorder(),
-                hintText: '예: 서울특별시 강남구 역삼동',
-              ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              '💡 팁: 나중에 온보딩에서 설정했던 주소를 불러올 예정입니다.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('취소'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final newAddress = addressController.text.trim();
-              if (newAddress.isNotEmpty) {
-                Get.back();
-                onSave(newAddress);
-              } else {
-                Get.snackbar(
-                  '주소 입력 오류',
-                  '주소를 입력해주세요.',
-                  snackPosition: SnackPosition.TOP,
-                  backgroundColor: Colors.red,
-                  colorText: Colors.white,
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: title.contains('집') ? Colors.blue : Colors.orange,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('저장'),
-          ),
-        ],
-      ),
+    
+    final TimeOfDay? picked = await showTimePicker(
+      context: Get.context!,
+      initialTime: currentTime,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+          child: child!,
+        );
+      },
     );
+    
+    if (picked != null) {
+      String newTime = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+      workEndTime.value = newTime;
+      
+      // 온보딩과 동일한 키로 저장
+      _storage.write('work_end_time', newTime);
+      
+      print('퇴근 시간 변경: $newTime');
+    }
   }
+
 
   // 준비 시간 설정
-  void changePreparationTime() {
-    _showPreparationTimeDialog();
-  }
-
-  void _showPreparationTimeDialog() {
+  void changePreparationTime() async {
     final List<Map<String, dynamic>> timeOptions = [
       {'minutes': 10, 'label': '10분', 'description': '간단한 준비'},
       {'minutes': 15, 'label': '15분', 'description': '기본 준비'},
@@ -397,15 +173,35 @@ class SettingsController extends GetxController {
 
     String selectedTime = preparationTime.value;
 
-    Get.dialog(
+    await Get.dialog(
       AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.timer, color: Colors.teal),
-            SizedBox(width: 8),
-            Text('준비 시간 설정'),
+            Expanded(
+              child: const Text(
+                '준비 시간 설정',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            IconButton(
+              onPressed: () => Get.back(),
+              icon: const Icon(
+                Icons.close,
+                size: 20,
+                color: Colors.grey,
+              ),
+              padding: const EdgeInsets.all(4),
+              constraints: const BoxConstraints(
+                minWidth: 32,
+                minHeight: 32,
+              ),
+            ),
           ],
         ),
+        titlePadding: const EdgeInsets.fromLTRB(24, 20, 16, 0),
         content: StatefulBuilder(
           builder: (context, setState) {
             return SingleChildScrollView(
@@ -461,39 +257,28 @@ class SettingsController extends GetxController {
           },
         ),
         actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('취소'),
-          ),
           ElevatedButton(
             onPressed: () {
               preparationTime.value = selectedTime;
-              _storage.write('preparation_time', selectedTime);
+              
+              // 온보딩과 동일한 키로 저장 (숫자 값으로 저장)
+              int timeValue = timeOptions.firstWhere((opt) => opt['label'] == selectedTime)['minutes'];
+              _storage.write('preparation_time', timeValue);
               
               Get.back();
               
-              Get.snackbar(
-                '준비 시간 변경 완료',
-                '준비 시간이 $selectedTime로 설정되었습니다.',
-                snackPosition: SnackPosition.TOP,
-                backgroundColor: Colors.teal,
-                colorText: Colors.white,
-                margin: const EdgeInsets.all(16),
-                borderRadius: 12,
-                duration: const Duration(seconds: 2),
-                icon: const Icon(Icons.timer, color: Colors.white),
-              );
-              
-              print('준비 시간 변경: $selectedTime');
+              print('준비 시간 변경: $selectedTime ($timeValue분)');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.teal,
               foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 44),
             ),
-            child: const Text('저장'),
+            child: const Text('변경'),
           ),
         ],
       ),
+      barrierDismissible: true,
     );
   }
 
@@ -636,26 +421,20 @@ class SettingsController extends GetxController {
 
   void _performReset() {
     // 모든 설정을 기본값으로 리셋
-    departureTimeNotification.value = true;
     weatherNotification.value = true;
-    trafficNotification.value = true;
-    workingHours.value = '9:00 - 18:00';
+    workStartTime.value = '09:00';
+    workEndTime.value = '18:00';
     preparationTime.value = '30분';
-    homeAddress.value = '';
-    workAddress.value = '';
     homeToWorkRoute.value = '미설정';
     workToHomeRoute.value = '미설정';
     darkMode.value = false;
     isPremium.value = false;
 
     // 저장소에서 삭제
-    _storage.remove('departure_notification');
     _storage.remove('weather_notification');
-    _storage.remove('traffic_notification');
-    _storage.remove('working_hours');
+    _storage.remove('work_start_time');
+    _storage.remove('work_end_time');
     _storage.remove('preparation_time');
-    _storage.remove('home_address');
-    _storage.remove('work_address');
     _storage.remove('home_to_work_route');
     _storage.remove('work_to_home_route');
     _storage.remove('dark_mode');

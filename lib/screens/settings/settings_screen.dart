@@ -34,8 +34,8 @@ class SettingsScreen extends GetView<SettingsController> {
 
             const SizedBox(height: 24),
 
-            // 개인화 설정 섹션
-            _buildPersonalizationSection(),
+            // 근무시간 설정 섹션
+            _buildWorkTimeSection(),
 
             const SizedBox(height: 24),
 
@@ -61,18 +61,6 @@ class SettingsScreen extends GetView<SettingsController> {
     return _buildSection(
       title: '알림 설정',
       children: [
-        // 출발 시간 알림
-        Obx(() => _buildToggleItem(
-          icon: Icons.notifications,
-          iconColor: Colors.blue,
-          title: '출발 시간 알림',
-          subtitle: '출발 시간 30분 전에 알려드려요',
-          value: controller.departureTimeNotification.value,
-          onChanged: controller.toggleDepartureNotification,
-        )),
-
-        _buildDivider(),
-
         // 날씨 알림
         Obx(() => _buildToggleItem(
           icon: Icons.wb_cloudy,
@@ -82,59 +70,35 @@ class SettingsScreen extends GetView<SettingsController> {
           value: controller.weatherNotification.value,
           onChanged: controller.toggleWeatherNotification,
         )),
-
-        _buildDivider(),
-
-        // 교통 장애 알림
-        Obx(() => _buildToggleItem(
-          icon: Icons.warning,
-          iconColor: Colors.red,
-          title: '교통 장애 알림',
-          subtitle: '실시간 교통 상황을 알려드려요',
-          value: controller.trafficNotification.value,
-          onChanged: controller.toggleTrafficNotification,
-        )),
       ],
     );
   }
 
-  // 개인화 설정 섹션 (온보딩에서 설정한 내용들)
-  Widget _buildPersonalizationSection() {
+  // 근무시간 설정 섹션 (온보딩에서 설정한 내용들과 연동)
+  Widget _buildWorkTimeSection() {
     return _buildSection(
-      title: '개인화 설정',
+      title: '근무시간 설정',
       children: [
-        // 집 주소 설정
+        // 출근 시간
         Obx(() => _buildNavigationItem(
-          icon: Icons.home,
+          icon: Icons.login,
           iconColor: Colors.blue,
-          title: '집 주소',
-          subtitle: '거주지 주소를 설정하세요',
-          value: controller.homeAddress.value.isEmpty ? '미설정' : controller.homeAddress.value,
-          onTap: controller.changeHomeAddress,
+          title: '출근 시간',
+          subtitle: '출근 시간을 설정하세요',
+          value: controller.workStartTime.value,
+          onTap: controller.changeWorkStartTime,
         )),
 
         _buildDivider(),
 
-        // 회사 주소 설정  
+        // 퇴근 시간
         Obx(() => _buildNavigationItem(
-          icon: Icons.business,
-          iconColor: Colors.orange,
-          title: '회사 주소',
-          subtitle: '직장 주소를 설정하세요',
-          value: controller.workAddress.value.isEmpty ? '미설정' : controller.workAddress.value,
-          onTap: controller.changeWorkAddress,
-        )),
-
-        _buildDivider(),
-
-        // 근무 시간 설정
-        Obx(() => _buildNavigationItem(
-          icon: Icons.access_time,
-          iconColor: Colors.green,
-          title: '근무 시간',
-          subtitle: '출퇴근 시간을 설정하세요',
-          value: controller.workingHours.value,
-          onTap: controller.changeWorkingHours,
+          icon: Icons.logout,
+          iconColor: Colors.red,
+          title: '퇴근 시간',
+          subtitle: '퇴근 시간을 설정하세요',
+          value: controller.workEndTime.value,
+          onTap: controller.changeWorkEndTime,
         )),
 
         _buildDivider(),
