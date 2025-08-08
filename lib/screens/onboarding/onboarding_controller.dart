@@ -102,6 +102,9 @@ class OnboardingController extends GetxController {
     }
   }
 
+  // 경로명 변수 추가 (step_route_setup.dart와 동기화)
+  final RxnString routeName = RxnString();
+
   // 현재 단계가 완료 가능한지 확인
   bool get canProceed {
     switch (currentStep.value) {
@@ -109,7 +112,8 @@ class OnboardingController extends GetxController {
         return true;
       case 1: // 경로 설정
         return selectedDeparture.value != null && selectedDeparture.value!.isNotEmpty && 
-               selectedArrival.value != null && selectedArrival.value!.isNotEmpty;
+               selectedArrival.value != null && selectedArrival.value!.isNotEmpty &&
+               routeName.value != null && routeName.value!.trim().isNotEmpty;
       default:
         return false;
     }
@@ -510,11 +514,13 @@ class OnboardingController extends GetxController {
       
       // 경로 데이터가 있는 경우에만 저장
       if (tempDeparture != null && tempArrival != null) {
-        // 새로운 배열 구조로 저장
-        final routeName = '$tempDeparture → $tempArrival';
+        // 경로명도 저장된 것이 있으면 사용, 없으면 자동 생성 (기존 호환성)
+        final savedRouteName = _storage.read<String>('onboarding_route_name');
+        final finalRouteName = savedRouteName ?? routeName.value ?? '$tempDeparture → $tempArrival';
+        
         final newRoute = {
           'id': DateTime.now().millisecondsSinceEpoch.toString(),
-          'name': routeName,
+          'name': finalRouteName,
           'departure': tempDeparture,
           'arrival': tempArrival,
           'transfers': tempTransfers ?? [],
@@ -540,6 +546,7 @@ class OnboardingController extends GetxController {
       await _storage.remove('onboarding_departure');
       await _storage.remove('onboarding_arrival');
       await _storage.remove('onboarding_transfers');
+      await _storage.remove('onboarding_route_name');
       
       // 근무시간 설정 관련 임시 데이터 제거
       await _storage.remove('onboarding_work_start_time');

@@ -30,12 +30,15 @@ class StepRouteSetup extends GetView<OnboardingController> {
     
     // 로컬 상태 관리 (GetStorage에서 복원)
     final RxnString selectedDeparture = RxnString();
+    final Rx<LocationInfo?> selectedDepartureInfo = Rx<LocationInfo?>(null);
     final RxList<LocationInfo> transferStations = <LocationInfo>[].obs;
     final RxnString selectedArrival = RxnString();
-    final RxnString routeName = RxnString(); // 경로 이름
+    final Rx<LocationInfo?> selectedArrivalInfo = Rx<LocationInfo?>(null);
+    // 온보딩 모드면 기본값으로 '출근경로' 설정
+    final RxnString routeName = RxnString(isAddNewMode ? null : '출근경로');
     
     // 저장된 데이터 복원
-    _loadSavedRouteData(selectedDeparture, transferStations, selectedArrival, isAddNewMode);
+    _loadSavedRouteData(selectedDeparture, transferStations, selectedArrival, routeName, isAddNewMode);
 
     return Scaffold(
       body: Container(
@@ -66,11 +69,9 @@ class StepRouteSetup extends GetView<OnboardingController> {
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
-                        // 경로 이름 입력 필드 (새 경로 추가 모드에서만)
-                        if (isAddNewMode) ...[
-                          _buildRouteNameInput(routeName),
-                          const SizedBox(height: 16),
-                        ],
+                        // 경로 이름 입력 필드 (모든 모드에서 표시)
+                        _buildRouteNameInput(routeName),
+                        const SizedBox(height: 16),
                         
                         // 출발지 설정 버튼 또는 선택된 출발지 카드
                         Obx(() {
@@ -84,12 +85,18 @@ class StepRouteSetup extends GetView<OnboardingController> {
                                 
                                 if (result != null) {
                                   selectedDeparture.value = result['name'];
+                                  selectedDepartureInfo.value = LocationInfo(
+                                    name: result['name'],
+                                    type: result['type'] ?? 'subway',
+                                    lineInfo: result['lineInfo'] ?? '출발지',
+                                    code: result['code'] ?? '',
+                                  );
                                 }
                               },
                             );
                           } else {
                             return _buildSelectedLocationCard(
-                              location: LocationInfo(
+                              location: selectedDepartureInfo.value ?? LocationInfo(
                                 name: selectedDeparture.value!,
                                 type: 'subway',
                                 lineInfo: '출발지',
@@ -97,7 +104,10 @@ class StepRouteSetup extends GetView<OnboardingController> {
                               ),
                               color: const Color(0xFF3B82F6),
                               label: '출발지',
-                              onDelete: () => selectedDeparture.value = null,
+                              onDelete: () {
+                                selectedDeparture.value = null;
+                                selectedDepartureInfo.value = null;
+                              },
                             );
                           }
                         }),
@@ -165,12 +175,18 @@ class StepRouteSetup extends GetView<OnboardingController> {
                                 
                                 if (result != null) {
                                   selectedArrival.value = result['name'];
+                                  selectedArrivalInfo.value = LocationInfo(
+                                    name: result['name'],
+                                    type: result['type'] ?? 'subway',
+                                    lineInfo: result['lineInfo'] ?? '도착지',
+                                    code: result['code'] ?? '',
+                                  );
                                 }
                               },
                             );
                           } else {
                             return _buildSelectedLocationCard(
-                              location: LocationInfo(
+                              location: selectedArrivalInfo.value ?? LocationInfo(
                                 name: selectedArrival.value!,
                                 type: 'subway',
                                 lineInfo: '도착지',
@@ -178,7 +194,10 @@ class StepRouteSetup extends GetView<OnboardingController> {
                               ),
                               color: const Color(0xFF10B981),
                               label: '도착지',
-                              onDelete: () => selectedArrival.value = null,
+                              onDelete: () {
+                                selectedArrival.value = null;
+                                selectedArrivalInfo.value = null;
+                              },
                             );
                           }
                         }),
@@ -525,13 +544,26 @@ class StepRouteSetup extends GetView<OnboardingController> {
       padding: const EdgeInsets.all(16),
       child: Obx(() {
         final bool canProceed = selectedDeparture.value != null &&
-            selectedArrival.value != null;
+            selectedArrival.value != null &&
+            routeName.value != null && 
+            routeName.value!.trim().isNotEmpty;
 
         return GestureDetector(
           onTap: canProceed ? () {
             if (isAddNewMode) {
               _saveNewRoute(selectedDeparture, selectedArrival, transferStations, routeName);
             } else {
+              // 온보딩 모드에서도 경로명 검증
+              if (routeName.value == null || routeName.value!.trim().isEmpty) {
+                Get.snackbar(
+                  '경로명 필요',
+                  '경로 이름을 입력해주세요.',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.red[100],
+                  colorText: Colors.red[800],
+                );
+                return;
+              }
               controller.nextStep();
             }
           } : null,
@@ -575,6 +607,8 @@ class StepRouteSetup extends GetView<OnboardingController> {
   }
 
   Widget _buildRouteNameInput(RxnString routeName) {
+    final textController = TextEditingController(text: routeName.value ?? '');
+    
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -606,6 +640,7 @@ class StepRouteSetup extends GetView<OnboardingController> {
           ),
           const SizedBox(height: 12),
           TextField(
+            controller: textController,
             onChanged: (value) => routeName.value = value.isNotEmpty ? value : null,
             decoration: InputDecoration(
               hintText: '예: 집 → 회사, 출근길 등',
@@ -638,6 +673,7 @@ class StepRouteSetup extends GetView<OnboardingController> {
     RxnString selectedDeparture,
     RxList<LocationInfo> transferStations,
     RxnString selectedArrival,
+    RxnString routeName,
     bool isAddNewMode,
   ) {
     final storage = GetStorage();
@@ -663,6 +699,13 @@ class StepRouteSetup extends GetView<OnboardingController> {
       print('🔄 도착지 복원: $savedArrival');
     }
     
+    // 경로명 복원
+    final savedRouteName = storage.read<String>('onboarding_route_name');
+    if (savedRouteName != null) {
+      routeName.value = savedRouteName;
+      print('🔄 경로명 복원: $savedRouteName');
+    }
+    
     // 환승지들 복원
     final savedTransfers = storage.read<List>('onboarding_transfers');
     if (savedTransfers != null) {
@@ -681,9 +724,10 @@ class StepRouteSetup extends GetView<OnboardingController> {
     }
     
     // 데이터 변경 감지 및 자동 저장 설정 (온보딩 모드에서만)
-    selectedDeparture.listen((value) => _saveRouteData(selectedDeparture, transferStations, selectedArrival));
-    selectedArrival.listen((value) => _saveRouteData(selectedDeparture, transferStations, selectedArrival));
-    transferStations.listen((value) => _saveRouteData(selectedDeparture, transferStations, selectedArrival));
+    selectedDeparture.listen((value) => _saveRouteData(selectedDeparture, transferStations, selectedArrival, routeName));
+    selectedArrival.listen((value) => _saveRouteData(selectedDeparture, transferStations, selectedArrival, routeName));
+    transferStations.listen((value) => _saveRouteData(selectedDeparture, transferStations, selectedArrival, routeName));
+    routeName.listen((value) => _saveRouteData(selectedDeparture, transferStations, selectedArrival, routeName));
   }
   
   // 경로 데이터 저장
@@ -691,6 +735,7 @@ class StepRouteSetup extends GetView<OnboardingController> {
     RxnString selectedDeparture,
     RxList<LocationInfo> transferStations,
     RxnString selectedArrival,
+    RxnString routeName,
   ) {
     final storage = GetStorage();
     
@@ -708,6 +753,13 @@ class StepRouteSetup extends GetView<OnboardingController> {
       storage.remove('onboarding_arrival');
     }
     
+    // 경로명 저장
+    if (routeName.value != null && routeName.value!.trim().isNotEmpty) {
+      storage.write('onboarding_route_name', routeName.value!.trim());
+    } else {
+      storage.remove('onboarding_route_name');
+    }
+    
     // 환승지들 저장
     if (transferStations.isNotEmpty) {
       final transfersData = transferStations.map((transfer) => {
@@ -722,6 +774,7 @@ class StepRouteSetup extends GetView<OnboardingController> {
     }
     
     print('💾 경로 데이터 저장 완료');
+    print('   경로명: ${routeName.value}');
     print('   출발지: ${selectedDeparture.value}');
     print('   도착지: ${selectedArrival.value}');
     print('   환승지: ${transferStations.length}개');
@@ -734,9 +787,19 @@ class StepRouteSetup extends GetView<OnboardingController> {
     // 현재 설정된 경로를 새 경로로 저장
     if (selectedDeparture.value != null && selectedArrival.value != null) {
       
-      // 경로 이름 생성 (없으면 자동 생성)
-      final finalRouteName = routeName.value ?? 
-          '${selectedDeparture.value} → ${selectedArrival.value}';
+      // 경로 이름이 반드시 필요함 (자동생성 로직 제거)
+      if (routeName.value == null || routeName.value!.trim().isEmpty) {
+        Get.snackbar(
+          '경로명 필요',
+          '경로 이름을 입력해주세요.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red[100],
+          colorText: Colors.red[800],
+        );
+        return;
+      }
+      
+      final finalRouteName = routeName.value!.trim();
       
       // 새 경로 데이터 생성
       final newRoute = {
