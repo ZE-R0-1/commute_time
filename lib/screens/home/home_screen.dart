@@ -26,6 +26,19 @@ class HomeScreen extends GetView<HomeController> {
                   children: [
                     const SizedBox(height: 8),
                     
+                    // 경로 카드 (경로 데이터가 있을 때만)
+                    Obx(() {
+                      if (controller.hasRouteData.value) {
+                        return Column(
+                          children: [
+                            _buildRouteCard(),
+                            const SizedBox(height: 24),
+                          ],
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    }),
+                    
                     // 날씨 카드
                     _buildWeatherCard(),
                     
@@ -40,10 +53,6 @@ class HomeScreen extends GetView<HomeController> {
                       return const SizedBox.shrink();
                     }),
                     
-                    const SizedBox(height: 24),
-                    
-                    // 곧 추가될 기능 안내
-                    _buildUpcomingFeaturesCard(),
                   ],
                 ),
               ),
@@ -473,6 +482,222 @@ class HomeScreen extends GetView<HomeController> {
           ),
         ],
       ),
+    );
+  }
+
+  // 경로 카드 위젯
+  Widget _buildRouteCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 헤더 (경로 제목과 설정 버튼)
+          Row(
+            children: [
+              Icon(
+                Icons.route,
+                color: Colors.blue[600],
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Obx(() => Text(
+                  controller.routeName.value.isEmpty ? '경로' : controller.routeName.value,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                )),
+              ),
+              InkWell(
+                onTap: controller.goToRouteSettings,
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    Icons.settings,
+                    color: Colors.grey[600],
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // 출발지 정보
+          Obx(() => _buildStationCard(
+            controller.departureStation.value,
+            '출발지',
+            Icons.train,
+            Colors.blue,
+            isFirst: true,
+          )),
+          
+          // 환승지들 (있을 때만)
+          Obx(() {
+            if (controller.transferStations.isNotEmpty) {
+              return Column(
+                children: [
+                  const SizedBox(height: 8),
+                  ...controller.transferStations.asMap().entries.map((entry) {
+                    int index = entry.key;
+                    Map<String, dynamic> transfer = entry.value;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _buildStationCard(
+                        transfer['name'] ?? '',
+                        '환승지 ${index + 1}',
+                        Icons.swap_horiz,
+                        Colors.orange,
+                      ),
+                    );
+                  }),
+                ],
+              );
+            }
+            return const SizedBox.shrink();
+          }),
+          
+          const SizedBox(height: 8),
+          
+          // 도착지 정보
+          Obx(() => _buildStationCard(
+            controller.arrivalStation.value,
+            '도착지',
+            Icons.location_on,
+            Colors.green,
+            isLast: true,
+          )),
+        ],
+      ),
+    );
+  }
+
+  // 역 정보 카드 (바텀시트 스타일 적용)
+  Widget _buildStationCard(
+    String stationName, 
+    String label, 
+    IconData icon, 
+    MaterialColor color,
+    {bool isFirst = false, bool isLast = false}
+  ) {
+    if (stationName.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      children: [
+        // 역 정보
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          decoration: BoxDecoration(
+            color: color.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.shade200),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: color.shade700,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      stationName,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: color.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // 실시간 도착정보 (출발지일 때만 - 임시로 더미 데이터)
+              if (isFirst)
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: color.shade300),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Text(
+                            '2분 후',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Text(
+                            '5분 후',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

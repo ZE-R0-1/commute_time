@@ -20,11 +20,20 @@ class HomeController extends GetxController {
   // 위치 정보
   final RxString currentAddress = '위치 정보 없음'.obs;
 
+  // 경로 정보
+  final RxString routeName = ''.obs;
+  final RxString departureStation = ''.obs;
+  final RxString arrivalStation = ''.obs;
+  final RxList<Map<String, dynamic>> transferStations = <Map<String, dynamic>>[].obs;
+  final RxBool hasRouteData = false.obs;
+  final RxString activeRouteId = ''.obs; // 현재 활성화된 경로 ID
+
   @override
   void onInit() {
     super.onInit();
     print('=== 홈 화면 초기화 ===');
     _loadSavedLocation();
+    _loadRouteData();
   }
 
   @override
@@ -336,5 +345,151 @@ class HomeController extends GetxController {
   // 앱 설정 페이지 열기
   Future<void> openAppSettings() async {
     await Geolocator.openAppSettings();
+  }
+
+  // 경로 데이터 로드
+  void _loadRouteData() {
+    print('=== 경로 데이터 로딩 ===');
+    
+    final savedRoutes = _storage.read<List>('saved_routes');
+    if (savedRoutes != null && savedRoutes.isNotEmpty) {
+      // 저장된 활성 경로 ID 확인
+      final savedActiveRouteId = _storage.read<String>('active_route_id');
+      
+      Map<String, dynamic>? targetRoute;
+      
+      if (savedRoutes.length == 1) {
+        // 경로가 1개뿐이면 자동으로 선택
+        targetRoute = Map<String, dynamic>.from(savedRoutes.first as Map);
+        activeRouteId.value = targetRoute['id'] ?? '';
+        // 자동 선택된 경우 스토리지에도 저장
+        _storage.write('active_route_id', activeRouteId.value);
+      } else if (savedActiveRouteId != null && savedActiveRouteId.isNotEmpty) {
+        // 저장된 활성 경로 ID가 있으면 해당 경로 찾기
+        for (var route in savedRoutes) {
+          final routeMap = Map<String, dynamic>.from(route as Map);
+          if (routeMap['id'] == savedActiveRouteId) {
+            targetRoute = routeMap;
+            activeRouteId.value = savedActiveRouteId;
+            break;
+          }
+        }
+        
+        // 저장된 활성 경로 ID에 해당하는 경로가 없으면 첫 번째 경로 사용
+        if (targetRoute == null) {
+          targetRoute = Map<String, dynamic>.from(savedRoutes.first as Map);
+          activeRouteId.value = targetRoute['id'] ?? '';
+          _storage.write('active_route_id', activeRouteId.value);
+        }
+      } else {
+        // 활성 경로 ID가 없으면 첫 번째 경로 사용 (2개 이상일 때는 수동 선택 필요)
+        targetRoute = Map<String, dynamic>.from(savedRoutes.first as Map);
+        activeRouteId.value = targetRoute['id'] ?? '';
+        _storage.write('active_route_id', activeRouteId.value);
+      }
+      
+      if (targetRoute != null) {
+        routeName.value = targetRoute['name'] ?? '저장된 경로';
+        departureStation.value = targetRoute['departure'] ?? '';
+        arrivalStation.value = targetRoute['arrival'] ?? '';
+        
+        final routeTransfers = targetRoute['transfers'] as List?;
+        if (routeTransfers != null) {
+          transferStations.value = routeTransfers.map((transfer) => 
+            Map<String, dynamic>.from(transfer as Map)).toList();
+        } else {
+          transferStations.clear();
+        }
+        
+        hasRouteData.value = true;
+        
+        print('✅ 활성 경로 데이터 로드 완료:');
+        print('   활성 경로 ID: ${activeRouteId.value}');
+        print('   경로명: ${routeName.value}');
+        print('   출발지: ${targetRoute['departure']}');
+        print('   도착지: ${targetRoute['arrival']}');
+        print('   환승지: ${transferStations.length}개');
+        print('   총 경로 수: ${savedRoutes.length}개');
+      }
+    } else {
+      // 온보딩 경로 확인
+      final departure = _storage.read<String>('onboarding_departure');
+      final arrival = _storage.read<String>('onboarding_arrival');
+      final transfers = _storage.read<List>('onboarding_transfers');
+
+      if (departure != null && arrival != null) {
+        routeName.value = '온보딩 경로';
+        departureStation.value = departure;
+        arrivalStation.value = arrival;
+        
+        if (transfers != null) {
+          transferStations.value = transfers.map((transfer) => 
+            Map<String, dynamic>.from(transfer as Map)).toList();
+        }
+        
+        hasRouteData.value = true;
+        activeRouteId.value = 'onboarding';
+        
+        print('✅ 온보딩 경로 데이터 로드 완료:');
+        print('   경로명: ${routeName.value}');
+        print('   출발지: $departure');
+        print('   도착지: $arrival');
+        print('   환승지: ${transferStations.length}개');
+      } else {
+        hasRouteData.value = false;
+        activeRouteId.value = '';
+        print('❌ 저장된 경로 데이터가 없습니다');
+      }
+    }
+  }
+
+  // 경로 데이터 새로고침 (RouteSetupController에서 호출)
+  void refreshRouteData() {
+    print('🔄 홈화면 경로 데이터 새로고침 요청');
+    _loadRouteData();
+  }
+
+  // 경로 적용하기
+  void applyRoute(String routeId) {
+    print('🔄 경로 적용: $routeId');
+    
+    final savedRoutes = _storage.read<List>('saved_routes');
+    if (savedRoutes != null && savedRoutes.isNotEmpty) {
+      // 해당 경로 찾기
+      for (var route in savedRoutes) {
+        final routeMap = Map<String, dynamic>.from(route as Map);
+        if (routeMap['id'] == routeId) {
+          // 활성 경로 변경
+          activeRouteId.value = routeId;
+          _storage.write('active_route_id', routeId);
+          
+          // 홈화면 데이터 즉시 업데이트
+          routeName.value = routeMap['name'] ?? '저장된 경로';
+          departureStation.value = routeMap['departure'] ?? '';
+          arrivalStation.value = routeMap['arrival'] ?? '';
+          
+          final routeTransfers = routeMap['transfers'] as List?;
+          if (routeTransfers != null) {
+            transferStations.value = routeTransfers.map((transfer) => 
+              Map<String, dynamic>.from(transfer as Map)).toList();
+          } else {
+            transferStations.clear();
+          }
+          
+          hasRouteData.value = true;
+          
+          print('✅ 경로 적용 완료:');
+          print('   활성 경로 ID: ${activeRouteId.value}');
+          print('   경로명: ${routeName.value}');
+          
+          break;
+        }
+      }
+    }
+  }
+
+  // 경로 설정 화면으로 이동
+  void goToRouteSettings() {
+    Get.toNamed('/route-setup');
   }
 }

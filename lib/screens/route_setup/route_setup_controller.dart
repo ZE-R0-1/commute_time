@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import '../onboarding/widgets/step_route_setup.dart';
+import '../home/home_controller.dart';
 
 class RouteSetupController extends GetxController {
   final GetStorage _storage = GetStorage();
@@ -23,6 +24,37 @@ class RouteSetupController extends GetxController {
   void onReady() {
     super.onReady();
     print('경로 설정 화면 준비 완료');
+    // 탭 전환 시에도 데이터 로그 출력
+    _printCurrentRouteData();
+  }
+
+  // 현재 경로 데이터 로그 출력 (탭 전환 시 사용)
+  void _printCurrentRouteData() {
+    if (routesList.isNotEmpty) {
+      print('📋 현재 경로 목록 (총 ${routesList.length}개 경로):');
+      for (var route in routesList) {
+        print('=== 경로 데이터: ${route['name']} ===');
+        print('  ID: ${route['id']}');
+        print('  이름: ${route['name']}');
+        print('  출발지: ${route['departure']}');
+        print('  도착지: ${route['arrival']}');
+        print('  생성일: ${route['createdAt']}');
+        
+        final transfers = route['transfers'] as List?;
+        if (transfers != null && transfers.isNotEmpty) {
+          print('  환승지 (${transfers.length}개):');
+          for (int i = 0; i < transfers.length; i++) {
+            final transfer = transfers[i];
+            print('    ${i + 1}. ${transfer['name']} (${transfer['type']}: ${transfer['lineInfo']})');
+          }
+        } else {
+          print('  환승지: 없음');
+        }
+        print('=======================');
+      }
+    } else {
+      print('📋 저장된 경로가 없습니다');
+    }
   }
 
   @override
@@ -46,7 +78,24 @@ class RouteSetupController extends GetxController {
       
       print('📋 경로 목록 로딩 완료 (총 ${routesList.length}개 경로)');
       for (var route in routesList) {
-        print('  - ${route['name']}: ${route['departure']} → ${route['arrival']}');
+        print('=== 경로 데이터: ${route['name']} ===');
+        print('  ID: ${route['id']}');
+        print('  이름: ${route['name']}');
+        print('  출발지: ${route['departure']}');
+        print('  도착지: ${route['arrival']}');
+        print('  생성일: ${route['createdAt']}');
+        
+        final transfers = route['transfers'] as List?;
+        if (transfers != null && transfers.isNotEmpty) {
+          print('  환승지 (${transfers.length}개):');
+          for (int i = 0; i < transfers.length; i++) {
+            final transfer = transfers[i];
+            print('    ${i + 1}. ${transfer['name']} (${transfer['type']}: ${transfer['lineInfo']})');
+          }
+        } else {
+          print('  환승지: 없음');
+        }
+        print('=======================');
       }
     } else {
       print('저장된 경로 정보가 없습니다.');
@@ -71,6 +120,11 @@ class RouteSetupController extends GetxController {
       // 새 경로가 추가되었으면 데이터 새로고침
       if (result == true) {
         _loadOnboardingRouteData();
+        
+        // 홈 컨트롤러에 경로 데이터 변경 알림
+        if (Get.isRegistered<HomeController>()) {
+          Get.find<HomeController>().refreshRouteData();
+        }
       }
     });
   }
@@ -113,6 +167,11 @@ class RouteSetupController extends GetxController {
       // 스토리지에 저장
       _saveRoutesToStorage();
       
+      // 홈 컨트롤러에 경로 데이터 변경 알림
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().refreshRouteData();
+      }
+      
       final locationName = locationType == 'departure' ? '출발지' : '도착지';
       
       print('$locationName 수정 완료: ${result['name']}');
@@ -149,6 +208,11 @@ class RouteSetupController extends GetxController {
         // 스토리지에 저장
         _saveRoutesToStorage();
         
+        // 홈 컨트롤러에 경로 데이터 변경 알림
+        if (Get.isRegistered<HomeController>()) {
+          Get.find<HomeController>().refreshRouteData();
+        }
+        
         print('환승지 $transferIndex 수정 완료: ${result['name']}');
       }
     }
@@ -173,6 +237,11 @@ class RouteSetupController extends GetxController {
       
       // 스토리지에 저장
       _saveRoutesToStorage();
+      
+      // 홈 컨트롤러에 경로 데이터 변경 알림
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().refreshRouteData();
+      }
       
       print('환승지 $transferIndex 삭제 완료: $deletedTransferName');
     }
@@ -207,6 +276,11 @@ class RouteSetupController extends GetxController {
       
       // 스토리지에 저장
       _saveRoutesToStorage();
+      
+      // 홈 컨트롤러에 경로 데이터 변경 알림
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().refreshRouteData();
+      }
       
       print('환승지 추가 완료: ${result['name']}');
     }
@@ -308,6 +382,11 @@ class RouteSetupController extends GetxController {
         // 스토리지에 저장
         _saveRoutesToStorage();
         
+        // 홈 컨트롤러에 경로 데이터 변경 알림
+        if (Get.isRegistered<HomeController>()) {
+          Get.find<HomeController>().refreshRouteData();
+        }
+        
         print('경로 이름 변경 완료: $currentName → $newName');
       }
     }
@@ -330,9 +409,36 @@ class RouteSetupController extends GetxController {
       // 스토리지에 저장
       _saveRoutesToStorage();
       
+      // 홈 컨트롤러에 경로 데이터 변경 알림
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().refreshRouteData();
+      }
+      
       print('경로 삭제 완료: $routeName');
     }
   }
+
+  // 경로 적용하기
+  void applyRoute(String routeId) {
+    print('🔄 경로 적용 요청: $routeId');
+    
+    if (Get.isRegistered<HomeController>()) {
+      Get.find<HomeController>().applyRoute(routeId);
+      print('✅ HomeController.applyRoute() 호출 완료');
+    }
+  }
+
+  // 특정 경로가 현재 활성화되어 있는지 확인
+  bool isRouteActive(String routeId) {
+    if (Get.isRegistered<HomeController>()) {
+      final homeController = Get.find<HomeController>();
+      return homeController.activeRouteId.value == routeId;
+    }
+    return false;
+  }
+
+  // 총 경로 개수 확인
+  int get totalRouteCount => routesList.length;
 
   // 경로 목록을 스토리지에 저장
   void _saveRoutesToStorage() {

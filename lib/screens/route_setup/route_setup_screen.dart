@@ -310,6 +310,44 @@ class RouteSetupScreen extends GetView<RouteSetupController> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // 적용하기/적용중 버튼 (항상 표시)
+                    Obx(() {
+                      final isActive = controller.isRouteActive(routeId);
+                      final canApply = controller.totalRouteCount >= 2;
+                      return InkWell(
+                        onTap: (isActive || !canApply) ? null : () {
+                          controller.applyRoute(routeId);
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isActive 
+                              ? const Color(0xFF10B981).withValues(alpha: 0.1)
+                              : const Color(0xFF2196F3).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isActive 
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFF2196F3),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Text(
+                            isActive ? '적용중' : '적용하기',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isActive 
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFF2196F3),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                    const SizedBox(width: 8),
+                    
                     // 삭제 버튼 (수정 모드일 때만)
                     if (isEditMode) ...[
                       InkWell(
