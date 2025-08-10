@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import 'home_controller.dart';
 import '../../app/services/weather_service.dart';
+import '../../app/services/subway_service.dart';
 
 class HomeScreen extends GetView<HomeController> {
   const HomeScreen({super.key});
@@ -524,13 +525,13 @@ class HomeScreen extends GetView<HomeController> {
                 )),
               ),
               InkWell(
-                onTap: controller.goToRouteSettings,
+                onTap: controller.refreshAllArrivalInfo,
                 borderRadius: BorderRadius.circular(16),
                 child: Padding(
                   padding: const EdgeInsets.all(4),
                   child: Icon(
-                    Icons.settings,
-                    color: Colors.grey[600],
+                    Icons.refresh,
+                    color: Colors.blue[600],
                     size: 20,
                   ),
                 ),
@@ -635,65 +636,25 @@ class HomeScreen extends GetView<HomeController> {
                 ),
               ),
               
-              // 실시간 도착정보 (출발지일 때만 - 임시로 더미 데이터)
+              // 실시간 도착정보 (모든 역에 대해 표시)
               if (isFirst)
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: color.shade300),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            '2분 후',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: Colors.blue,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            '5분 후',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+                Obx(() => _buildRealTimeArrivalInfo(color, 'departure'))
+              else if (!isFirst && !isLast)
+                // 환승지의 경우 인덱스 찾기
+                Obx(() {
+                  int transferIndex = -1;
+                  for (int i = 0; i < controller.transferStations.length; i++) {
+                    if (controller.transferStations[i]['name'] == stationName) {
+                      transferIndex = i;
+                      break;
+                    }
+                  }
+                  return transferIndex >= 0 
+                    ? _buildRealTimeArrivalInfo(color, 'transfer', transferIndex: transferIndex)
+                    : const SizedBox.shrink();
+                })
+              else if (isLast)
+                Obx(() => _buildRealTimeArrivalInfo(color, 'destination')),
             ],
           ),
         ),
@@ -701,50 +662,231 @@ class HomeScreen extends GetView<HomeController> {
     );
   }
 
-  // 곧 추가될 기능 카드
-  Widget _buildUpcomingFeaturesCard() {
+  // 실시간 도착정보 위젯
+  Widget _buildRealTimeArrivalInfo(MaterialColor color, String stationType, {int? transferIndex}) {
+    // 로딩 상태 확인
+    bool isLoading = false;
+    String errorMessage = '';
+    List<SubwayArrival> arrivalData = [];
+    
+    switch (stationType) {
+      case 'departure':
+        isLoading = controller.isLoadingArrival.value;
+        errorMessage = controller.arrivalError.value;
+        arrivalData = controller.departureArrivalInfo;
+        break;
+      case 'transfer':
+        if (transferIndex != null && transferIndex < controller.transferArrivalInfo.length) {
+          isLoading = controller.isLoadingTransferArrival.value;
+          errorMessage = controller.transferArrivalError.value;
+          arrivalData = controller.transferArrivalInfo[transferIndex];
+        }
+        break;
+      case 'destination':
+        isLoading = controller.isLoadingDestinationArrival.value;
+        errorMessage = controller.destinationArrivalError.value;
+        arrivalData = controller.destinationArrivalInfo;
+        break;
+    }
+
+    if (isLoading) {
+      return Container(
+        padding: const EdgeInsets.all(8),
+        child: const SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+          ),
+        ),
+      );
+    }
+
+    if (errorMessage.isNotEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Text(
+          '정보없음',
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.grey[600],
+          ),
+        ),
+      );
+    }
+
+    if (arrivalData.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // 방향별로 그룹화 (바텀시트와 동일한 로직)
+    final Map<String, List<SubwayArrival>> groupedByDirection = {};
+    for (final arrival in arrivalData) {
+      final key = '${arrival.lineDisplayName}_${arrival.cleanTrainLineNm}';
+      if (!groupedByDirection.containsKey(key)) {
+        groupedByDirection[key] = [];
+      }
+      groupedByDirection[key]!.add(arrival);
+    }
+    
+    if (groupedByDirection.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      width: 160,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.shade300),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
-        children: [
-          Icon(
-            Icons.construction,
-            size: 48,
-            color: Colors.orange[600],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '개발 중인 기능',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: groupedByDirection.entries.take(2).map((directionEntry) {
+          final arrivals = directionEntry.value.take(2).toList();
+          final firstArrival = arrivals.first;
+          final secondArrival = arrivals.length > 1 ? arrivals[1] : null;
+          
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 호선 표시
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _getLineColor(firstArrival.subwayId),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        firstArrival.lineDisplayName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 4),
+                
+                // 방향 표시
+                Text(
+                  firstArrival.cleanTrainLineNm,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                
+                const SizedBox(height: 6),
+                
+                // 첫 번째 열차
+                _buildArrivalTimeRow(firstArrival, true),
+                
+                // 두 번째 열차 (있을 때만)
+                if (secondArrival != null) ...[
+                  const SizedBox(height: 3),
+                  _buildArrivalTimeRow(secondArrival, false),
+                ],
+              ],
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '출퇴근 정보, 실시간 교통 상황,\n맞춤형 알림 등 다양한 기능이 곧 추가될 예정입니다',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-              height: 1.4,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+          );
+        }).toList(),
       ),
     );
   }
+
+  // 도착시간 행 위젯
+  Widget _buildArrivalTimeRow(SubwayArrival arrival, bool isFirst) {
+    Color statusColor = Colors.blue[600]!;
+    if (arrival.arrivalTimeText.contains('진입') || arrival.arvlCd == 0) {
+      statusColor = Colors.green[600]!;
+    } else if (arrival.arrivalTimeText.contains('도착') || arrival.arvlCd == 5) {
+      statusColor = Colors.red[600]!;
+    }
+
+    return Row(
+      children: [
+        // 상태 아이콘
+        Text(
+          arrival.arrivalStatusIcon,
+          style: const TextStyle(fontSize: 11),
+        ),
+        const SizedBox(width: 4),
+        
+        // 도착시간
+        Expanded(
+          child: Text(
+            arrival.arrivalTimeText,
+            style: TextStyle(
+              fontSize: isFirst ? 11 : 10,
+              fontWeight: isFirst ? FontWeight.bold : FontWeight.w500,
+              color: statusColor,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        
+        // 열차번호 (공간이 있을 때만)
+        if (arrival.btrainNo.isNotEmpty) ...[
+          const SizedBox(width: 4),
+          Text(
+            arrival.btrainNo,
+            style: TextStyle(
+              fontSize: 8,
+              color: Colors.grey[500],
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // 호선 색상 가져오기 (바텀시트와 동일한 로직)
+  Color _getLineColor(String subwayId) {
+    switch (subwayId) {
+      case '1001': return const Color(0xFF263C96); // 1호선
+      case '1002': return const Color(0xFF00A84D); // 2호선  
+      case '1003': return const Color(0xFFEF7C1C); // 3호선
+      case '1004': return const Color(0xFF00A5DE); // 4호선
+      case '1005': return const Color(0xFF996CAC); // 5호선
+      case '1006': return const Color(0xFFCD7C2F); // 6호선
+      case '1007': return const Color(0xFF747F00); // 7호선
+      case '1008': return const Color(0xFFE6186C); // 8호선
+      case '1009': return const Color(0xFFBB8336); // 9호선
+      case '1063': return const Color(0xFF77C4A3); // 경의중앙선
+      case '1065': return const Color(0xFF0090D2); // 공항철도
+      case '1067': return const Color(0xFFF5A200); // 경춘선
+      case '1075': return const Color(0xFF32C6A6); // 수인분당선
+      case '1077': return const Color(0xFFB7CE63); // 신분당선
+      case '1092': return const Color(0xFF6789CA); // 우이신설선
+      default: return Colors.grey;
+    }
+  }
+
 }

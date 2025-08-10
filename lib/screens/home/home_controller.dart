@@ -3,6 +3,8 @@ import 'package:get_storage/get_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../../app/services/weather_service.dart';
+import '../../app/services/subway_service.dart';
+import '../../app/services/subway_search_service.dart';
 
 class HomeController extends GetxController {
   final GetStorage _storage = GetStorage();
@@ -410,6 +412,9 @@ class HomeController extends GetxController {
         print('   도착지: ${targetRoute['arrival']}');
         print('   환승지: ${transferStations.length}개');
         print('   총 경로 수: ${savedRoutes.length}개');
+        
+        // 경로 데이터 로드 후 모든 도착정보 로드
+        loadAllArrivalInfo();
       }
     } else {
       // 온보딩 경로 확인
@@ -435,6 +440,9 @@ class HomeController extends GetxController {
         print('   출발지: $departure');
         print('   도착지: $arrival');
         print('   환승지: ${transferStations.length}개');
+        
+        // 경로 데이터 로드 후 모든 도착정보 로드
+        loadAllArrivalInfo();
       } else {
         hasRouteData.value = false;
         activeRouteId.value = '';
@@ -482,14 +490,346 @@ class HomeController extends GetxController {
           print('   활성 경로 ID: ${activeRouteId.value}');
           print('   경로명: ${routeName.value}');
           
+          // 경로 변경 후 모든 도착정보 새로고침
+          loadAllArrivalInfo();
+          
           break;
         }
       }
     }
   }
 
+  // 지하철 도착정보 상태
+  final RxList<SubwayArrival> departureArrivalInfo = <SubwayArrival>[].obs;
+  final RxList<List<SubwayArrival>> transferArrivalInfo = <List<SubwayArrival>>[].obs;
+  final RxList<SubwayArrival> destinationArrivalInfo = <SubwayArrival>[].obs;
+  final RxBool isLoadingArrival = false.obs;
+  final RxBool isLoadingTransferArrival = false.obs;
+  final RxBool isLoadingDestinationArrival = false.obs;
+  final RxString arrivalError = ''.obs;
+  final RxString transferArrivalError = ''.obs;
+  final RxString destinationArrivalError = ''.obs;
+
+  // 모든 역의 실시간 도착정보 로딩
+  Future<void> loadAllArrivalInfo() async {
+    await Future.wait([
+      loadDepartureArrivalInfo(),
+      loadTransferArrivalInfo(),
+      loadDestinationArrivalInfo(),
+    ]);
+  }
+
+  // 출발지 실시간 도착정보 로딩
+  Future<void> loadDepartureArrivalInfo() async {
+    if (departureStation.value.isEmpty) return;
+    
+    try {
+      isLoadingArrival.value = true;
+      arrivalError.value = '';
+      
+      // 역명에서 순수 역명 추출 (예: "강남역 2호선" → "강남역")
+      String cleanStationName = _cleanStationName(departureStation.value);
+      
+      print('🚇 출발지 도착정보 로딩: ${departureStation.value} → $cleanStationName');
+      
+      // SubwaySearchService를 사용하여 도착정보 조회
+      final allArrivals = await SubwaySearchService.getArrivalInfo(cleanStationName);
+      
+      // 호선 필터링 적용
+      final filteredArrivals = _filterArrivalsByLine(allArrivals, departureStation.value);
+      
+      if (filteredArrivals.isNotEmpty) {
+        departureArrivalInfo.value = filteredArrivals;
+        print('✅ 도착정보 로딩 성공: ${allArrivals.length}개 → 필터링 후 ${filteredArrivals.length}개');
+      } else {
+        departureArrivalInfo.clear();
+        arrivalError.value = '도착정보가 없습니다';
+        print('⚠️ 도착정보 없음 (전체 ${allArrivals.length}개 → 필터링 후 0개)');
+      }
+      
+    } catch (e) {
+      arrivalError.value = '도착정보 로딩 실패';
+      departureArrivalInfo.clear();
+      print('❌ 도착정보 로딩 오류: $e');
+    } finally {
+      isLoadingArrival.value = false;
+    }
+  }
+
+  // 역명에서 호선 정보 제거 (순수 역명 추출)
+  String _cleanStationName(String stationName) {
+    // "강남역 2호선", "사당역 4호선" → "강남역", "사당역"
+    return stationName
+        .replaceAll(RegExp(r'\s+\d+호선$'), '') // " 2호선", " 4호선" 등 제거
+        .replaceAll(RegExp(r'\s+신분당선$'), '') // " 신분당선" 제거
+        .replaceAll(RegExp(r'\s+경의중앙선$'), '') // " 경의중앙선" 제거
+        .replaceAll(RegExp(r'\s+공항철도$'), '') // " 공항철도" 제거
+        .replaceAll(RegExp(r'\s+분당선$'), '') // " 분당선" 제거
+        .replaceAll(RegExp(r'\s+수인분당선$'), '') // " 수인분당선" 제거
+        .replaceAll(RegExp(r'\s+.*선$'), '') // 기타 "~선" 제거
+        .trim();
+  }
+
+  // 호선별 도착정보 필터링 (transport_bottom_sheet와 동일한 로직)
+  List<SubwayArrival> _filterArrivalsByLine(List<SubwayArrival> arrivals, String lineFilter) {
+    if (lineFilter.isEmpty) {
+      return arrivals;
+    }
+    
+    // lineFilter에서 노선명 추출 (예: "강남역 2호선" -> "2호선")
+    String extractedLine = '';
+    if (lineFilter.contains('1호선')) extractedLine = '1호선';
+    else if (lineFilter.contains('2호선')) extractedLine = '2호선';
+    else if (lineFilter.contains('3호선')) extractedLine = '3호선';
+    else if (lineFilter.contains('4호선')) extractedLine = '4호선';
+    else if (lineFilter.contains('5호선')) extractedLine = '5호선';
+    else if (lineFilter.contains('6호선')) extractedLine = '6호선';
+    else if (lineFilter.contains('7호선')) extractedLine = '7호선';
+    else if (lineFilter.contains('8호선')) extractedLine = '8호선';
+    else if (lineFilter.contains('9호선')) extractedLine = '9호선';
+    else if (lineFilter.contains('신분당선')) extractedLine = '신분당선';
+    else if (lineFilter.contains('분당선')) extractedLine = '분당선';
+    else if (lineFilter.contains('경의중앙선')) extractedLine = '경의중앙선';
+    else if (lineFilter.contains('공항철도')) extractedLine = '공항철도';
+    else if (lineFilter.contains('경춘선')) extractedLine = '경춘선';
+    else if (lineFilter.contains('수인분당선')) extractedLine = '수인분당선';
+    else if (lineFilter.contains('우이신설선')) extractedLine = '우이신설선';
+    else if (lineFilter.contains('서해선')) extractedLine = '서해선';
+    else if (lineFilter.contains('김포골드라인')) extractedLine = '김포골드라인';
+    else if (lineFilter.contains('신림선')) extractedLine = '신림선';
+    
+    if (extractedLine.isEmpty) {
+      return arrivals;
+    }
+    
+    print('🔍 필터링 적용: $lineFilter → $extractedLine');
+    
+    final filtered = arrivals.where((arrival) {
+      return arrival.lineDisplayName.contains(extractedLine) || 
+             arrival.cleanTrainLineNm.contains(extractedLine);
+    }).toList();
+    
+    print('📊 필터링 결과: ${arrivals.length}개 → ${filtered.length}개');
+    return filtered;
+  }
+
+  // 특정 호선의 도착정보만 필터링
+  List<SubwayArrival> getArrivalsByLine(String targetSubwayId) {
+    return departureArrivalInfo
+        .where((arrival) => arrival.subwayId == targetSubwayId)
+        .take(2) // 최대 2개만
+        .toList();
+  }
+
+  // 경로에서 호선 정보 추출 (환승지에서 호선 정보를 가져옴)
+  List<String> getAvailableSubwayLines() {
+    List<String> lines = [];
+    
+    // 환승지에서 호선 정보 추출
+    for (var transfer in transferStations) {
+      final subwayLines = transfer['subway_lines'] as List?;
+      if (subwayLines != null) {
+        for (var line in subwayLines) {
+          final subwayId = line['subway_id']?.toString() ?? '';
+          if (subwayId.isNotEmpty && !lines.contains(subwayId)) {
+            lines.add(subwayId);
+          }
+        }
+      }
+    }
+    
+    // 출발지/도착지가 지하철역인 경우에도 호선 정보 추출 가능
+    // (현재 데이터 구조에서는 환승지에서만 호선 정보 저장됨)
+    
+    return lines;
+  }
+
+  // 호선별로 그룹화된 도착정보
+  Map<String, List<SubwayArrival>> get groupedArrivalInfo {
+    final Map<String, List<SubwayArrival>> grouped = {};
+    
+    for (final arrival in departureArrivalInfo) {
+      final lineKey = arrival.lineDisplayName;
+      if (!grouped.containsKey(lineKey)) {
+        grouped[lineKey] = [];
+      }
+      grouped[lineKey]!.add(arrival);
+    }
+    
+    return grouped;
+  }
+
   // 경로 설정 화면으로 이동
   void goToRouteSettings() {
     Get.toNamed('/route-setup');
+  }
+
+  // 모든 도착정보 새로고침
+  Future<void> refreshAllArrivalInfo() async {
+    print('🔄 모든 도착정보 새로고침 시작');
+    await loadAllArrivalInfo();
+    print('✅ 모든 도착정보 새로고침 완료');
+  }
+
+  // 🧪 지하철 도착정보 API 테스트 - 호선별 그룹화
+  Future<void> testSubwayArrivalApi() async {
+    print('🚇 지하철 도착정보 API 테스트 시작 (호선별 그룹화)');
+    
+    // 테스트용 역명들 (주요역)
+    final testStations = ['서울', '강남', '홍대입구'];
+    
+    for (final station in testStations) {
+      print('\n📍 $station역 실시간 도착정보 테스트');
+      try {
+        final arrivals = await SubwayService.getRealtimeArrival(station);
+        
+        if (arrivals.isNotEmpty) {
+          print('✅ $station역 도착정보 조회 성공: ${arrivals.length}개');
+          
+          // 🚇 호선별로 그룹화
+          final Map<String, List<SubwayArrival>> groupedByLine = {};
+          for (final arrival in arrivals) {
+            final lineKey = arrival.lineDisplayName;
+            if (!groupedByLine.containsKey(lineKey)) {
+              groupedByLine[lineKey] = [];
+            }
+            groupedByLine[lineKey]!.add(arrival);
+          }
+          
+          print('📊 호선별 분류: ${groupedByLine.keys.join(", ")}');
+          
+          // 호선별로 출력
+          for (final lineEntry in groupedByLine.entries) {
+            final lineName = lineEntry.key;
+            final lineArrivals = lineEntry.value;
+            
+            print('\n🚊 $lineName (${lineArrivals.length}개 열차)');
+            
+            // 방향별로 추가 그룹화
+            final Map<String, List<SubwayArrival>> groupedByDirection = {};
+            for (final arrival in lineArrivals) {
+              final directionKey = '${arrival.cleanTrainLineNm}';
+              if (!groupedByDirection.containsKey(directionKey)) {
+                groupedByDirection[directionKey] = [];
+              }
+              groupedByDirection[directionKey]!.add(arrival);
+            }
+            
+            for (final dirEntry in groupedByDirection.entries) {
+              final direction = dirEntry.key;
+              final dirArrivals = dirEntry.value;
+              
+              print('   📍 $direction');
+              
+              for (int i = 0; i < dirArrivals.length; i++) {
+                final arrival = dirArrivals[i];
+                print('      ${i + 1}. ${arrival.arrivalStatusIcon} ${arrival.arrivalTimeText}');
+                print('         방향: ${arrival.directionText} | 열차: ${arrival.btrainNo}');
+                print('         상태: ${arrival.detailedArrivalInfo}');
+                
+                if (arrival.barvlDt > 0) {
+                  print('         실시간: ${arrival.getUpdatedArrivalTime(0)}');
+                }
+                
+                if (arrival.isLastTrain) {
+                  print('         🚨 막차');
+                }
+                
+                // 추가 정보들
+                print('         [DEBUG] subwayId: ${arrival.subwayId}, arvlCd: ${arrival.arvlCd}');
+                print('         [DEBUG] 종착역: ${arrival.bstatnNm}, 열차종류: ${arrival.btrainSttus}');
+              }
+            }
+          }
+          
+        } else {
+          print('❌ $station역 도착정보 없음 또는 오류');
+        }
+        
+        // API 호출 간격 (너무 빠르게 호출하지 않도록)
+        await Future.delayed(const Duration(seconds: 2));
+        
+      } catch (e) {
+        print('❌ $station역 API 호출 오류: $e');
+      }
+    }
+    
+    print('\n🏁 지하철 도착정보 API 테스트 완료');
+  }
+
+  // 환승지들 실시간 도착정보 로딩
+  Future<void> loadTransferArrivalInfo() async {
+    try {
+      isLoadingTransferArrival.value = true;
+      transferArrivalError.value = '';
+      
+      List<List<SubwayArrival>> allTransferArrivals = [];
+      
+      for (int i = 0; i < transferStations.length; i++) {
+        final transferStation = transferStations[i];
+        final stationName = transferStation['name']?.toString() ?? '';
+        
+        if (stationName.isNotEmpty) {
+          String cleanStationName = _cleanStationName(stationName);
+          
+          print('🚇 환승지 ${i + 1} 도착정보 로딩: $stationName → $cleanStationName');
+          
+          try {
+            final allArrivals = await SubwaySearchService.getArrivalInfo(cleanStationName);
+            final filteredArrivals = _filterArrivalsByLine(allArrivals, stationName);
+            
+            allTransferArrivals.add(filteredArrivals);
+            
+            print('✅ 환승지 ${i + 1} 도착정보 성공: ${allArrivals.length}개 → 필터링 후 ${filteredArrivals.length}개');
+          } catch (e) {
+            print('❌ 환승지 ${i + 1} 도착정보 로딩 오류: $e');
+            allTransferArrivals.add([]);
+          }
+        } else {
+          allTransferArrivals.add([]);
+        }
+      }
+      
+      transferArrivalInfo.value = allTransferArrivals;
+      
+    } catch (e) {
+      transferArrivalError.value = '환승지 도착정보 로딩 실패';
+      print('❌ 환승지 도착정보 전체 로딩 오류: $e');
+    } finally {
+      isLoadingTransferArrival.value = false;
+    }
+  }
+
+  // 도착지 실시간 도착정보 로딩
+  Future<void> loadDestinationArrivalInfo() async {
+    if (arrivalStation.value.isEmpty) return;
+    
+    try {
+      isLoadingDestinationArrival.value = true;
+      destinationArrivalError.value = '';
+      
+      String cleanStationName = _cleanStationName(arrivalStation.value);
+      
+      print('🚇 도착지 도착정보 로딩: ${arrivalStation.value} → $cleanStationName');
+      
+      final allArrivals = await SubwaySearchService.getArrivalInfo(cleanStationName);
+      final filteredArrivals = _filterArrivalsByLine(allArrivals, arrivalStation.value);
+      
+      if (filteredArrivals.isNotEmpty) {
+        destinationArrivalInfo.value = filteredArrivals;
+        print('✅ 도착지 도착정보 로딩 성공: ${allArrivals.length}개 → 필터링 후 ${filteredArrivals.length}개');
+      } else {
+        destinationArrivalInfo.clear();
+        destinationArrivalError.value = '도착정보가 없습니다';
+        print('⚠️ 도착지 도착정보 없음 (전체 ${allArrivals.length}개 → 필터링 후 0개)');
+      }
+      
+    } catch (e) {
+      destinationArrivalError.value = '도착정보 로딩 실패';
+      destinationArrivalInfo.clear();
+      print('❌ 도착지 도착정보 로딩 오류: $e');
+    } finally {
+      isLoadingDestinationArrival.value = false;
+    }
   }
 }
