@@ -264,7 +264,7 @@ class LocationSearchController extends GetxController {
         isBottomSheetVisible.value = false;
         _setMapDraggable(true);
       },
-      onSelect: (stationName) => _selectSubwayStation(station),
+      onSelect: (selectedStationName) => _selectSubwayStationWithDirection(selectedStationName, station),
       placeName: station.placeName,
       lineFilter: lineFilter,
     );
@@ -384,7 +384,21 @@ class LocationSearchController extends GetxController {
     }
   }
 
-  // 지하철역 선택
+  // 지하철역 선택 (방면 정보 포함)
+  void _selectSubwayStationWithDirection(String selectedStationName, SubwayStationInfo station) {
+    if (mode.value.isEmpty) return;
+
+    Get.back(result: {
+      'name': selectedStationName, // 바텀시트에서 선택한 방면 정보 포함된 이름 사용
+      'type': 'subway',
+      'lineInfo': '지하철역',
+      'code': station.id,
+      'latitude': station.latitude,
+      'longitude': station.longitude,
+    });
+  }
+
+  // 지하철역 선택 (기존 - 호환성 유지)
   void _selectSubwayStation(SubwayStationInfo station) {
     if (mode.value.isEmpty) return;
 

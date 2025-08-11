@@ -225,7 +225,9 @@ class StepRouteSetup extends GetView<OnboardingController> {
       child: Row(
         children: [
           GestureDetector(
-            onTap: () => isAddNewMode ? Get.back() : controller.previousStep(),
+            onTap: () => isAddNewMode ? Get.back() : (
+              Get.isRegistered<OnboardingController>() ? controller.previousStep() : Get.back()
+            ),
             child: Container(
               width: 24,
               height: 24,
@@ -564,7 +566,13 @@ class StepRouteSetup extends GetView<OnboardingController> {
                 );
                 return;
               }
-              controller.nextStep();
+              // OnboardingController가 등록되어 있는지 확인 후 호출
+              if (Get.isRegistered<OnboardingController>()) {
+                controller.nextStep();
+              } else {
+                print('⚠️ OnboardingController가 등록되지 않음 - 온보딩 모드가 아닐 수 있음');
+                Get.back();
+              }
             }
           } : null,
           child: AnimatedContainer(

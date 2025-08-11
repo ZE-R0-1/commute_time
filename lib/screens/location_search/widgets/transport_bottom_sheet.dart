@@ -49,7 +49,7 @@ class TransportBottomSheet {
             
             // 내용
             Expanded(
-              child: Obx(() => _buildSubwayContent(isLoading.value, arrivals, errorMessage.value, stationName)),
+              child: Obx(() => _buildSubwayContent(isLoading.value, arrivals, errorMessage.value, stationName, onSelect, onClose)),
             ),
           ],
         ),
@@ -203,29 +203,6 @@ class TransportBottomSheet {
               ),
             ),
           ),
-          if (mode.isNotEmpty) ...[
-            GestureDetector(
-              onTap: () {
-                Get.back();
-                onSelect(stationName);
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.blue[600],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  '선택',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
           IconButton(
             onPressed: onRefresh,
             icon: Icon(Icons.refresh, color: Colors.blue.shade600, size: 20),
@@ -312,6 +289,8 @@ class TransportBottomSheet {
     RxList<SubwayArrival> arrivals,
     String errorMessage,
     String stationName,
+    Function(String) onSelect,
+    VoidCallback onClose,
   ) {
     if (isLoading) {
       return const Center(
@@ -383,7 +362,7 @@ class TransportBottomSheet {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: groupedList.length,
-      itemBuilder: (context, index) => _buildSubwayArrivalCard(groupedList[index]),
+      itemBuilder: (context, index) => _buildSubwayArrivalCard(groupedList[index], stationName, onSelect, onClose),
     );
   }
 
@@ -533,7 +512,12 @@ class TransportBottomSheet {
   }
 
   // 지하철 도착정보 카드 (방향별 그룹화)
-  static Widget _buildSubwayArrivalCard(List<SubwayArrival> arrivals) {
+  static Widget _buildSubwayArrivalCard(
+    List<SubwayArrival> arrivals,
+    String stationName,
+    Function(String) onSelect,
+    VoidCallback onClose,
+  ) {
     final firstArrival = arrivals.first;
     final secondArrival = arrivals.length > 1 ? arrivals[1] : null;
     
@@ -554,7 +538,7 @@ class TransportBottomSheet {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 열차 노선 정보
+          // 열차 노선 정보와 선택 버튼
           Row(
             children: [
               Container(
@@ -578,6 +562,31 @@ class TransportBottomSheet {
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ],
+                ),
+              ),
+              // 선택 버튼
+              GestureDetector(
+                onTap: () {
+                  Get.back();
+                  // 역명, 호선, 방면 정보를 조합해서 전달
+                  final selectedStation = '$stationName ${firstArrival.lineDisplayName} (${firstArrival.cleanTrainLineNm})';
+                  onSelect(selectedStation);
+                  onClose();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.blue,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    '선택',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -714,7 +723,7 @@ class TransportBottomSheet {
                   onTap: () {
                     Get.back(); // 바텀시트 닫기
                     Get.back(result: { // 온보딩 화면으로 돌아가면서 결과 전달
-                      'name': '${busStop.stationName} ${info.routeName}',
+                      'name': '${busStop.stationName} ${info.routeName}번 버스',
                       'type': 'bus',
                       'lineInfo': '경기도 버스정류장',
                       'code': busStop.stationId,
@@ -989,7 +998,7 @@ class TransportBottomSheet {
                   onTap: () {
                     Get.back(); // 바텀시트 닫기
                     Get.back(result: { // 온보딩 화면으로 돌아가면서 결과 전달
-                      'name': '${busStop.stationNm} ${info.routeNo}',
+                      'name': '${busStop.stationNm} ${info.routeNo}번 버스',
                       'type': 'bus',
                       'lineInfo': '서울 버스정류장',
                       'code': busStop.stationId,
