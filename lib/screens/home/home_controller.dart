@@ -558,16 +558,13 @@ class HomeController extends GetxController {
 
   // 역명에서 호선 정보 제거 (순수 역명 추출)
   String _cleanStationName(String stationName) {
-    // "강남역 2호선", "사당역 4호선" → "강남역", "사당역"
-    return stationName
-        .replaceAll(RegExp(r'\s+\d+호선$'), '') // " 2호선", " 4호선" 등 제거
-        .replaceAll(RegExp(r'\s+신분당선$'), '') // " 신분당선" 제거
-        .replaceAll(RegExp(r'\s+경의중앙선$'), '') // " 경의중앙선" 제거
-        .replaceAll(RegExp(r'\s+공항철도$'), '') // " 공항철도" 제거
-        .replaceAll(RegExp(r'\s+분당선$'), '') // " 분당선" 제거
-        .replaceAll(RegExp(r'\s+수인분당선$'), '') // " 수인분당선" 제거
-        .replaceAll(RegExp(r'\s+.*선$'), '') // 기타 "~선" 제거
-        .trim();
+    // "강남역 2호선 (성수방면)", "사당역 4호선" → "강남역", "사당역"
+    // 첫 번째 공백 이전의 역명만 추출
+    final parts = stationName.split(' ');
+    if (parts.isNotEmpty) {
+      return parts.first;
+    }
+    return stationName;
   }
 
   // 호선별 도착정보 필터링 (transport_bottom_sheet와 동일한 로직)
@@ -576,8 +573,10 @@ class HomeController extends GetxController {
       return arrivals;
     }
     
-    // lineFilter에서 노선명 추출 (예: "강남역 2호선" -> "2호선")
+    // lineFilter에서 노선명과 방면 정보 추출 (예: "강남역 2호선 (성수방면)" -> "2호선", "성수방면")
     String extractedLine = '';
+    String extractedDirection = '';
+    
     if (lineFilter.contains('1호선')) extractedLine = '1호선';
     else if (lineFilter.contains('2호선')) extractedLine = '2호선';
     else if (lineFilter.contains('3호선')) extractedLine = '3호선';
@@ -598,18 +597,43 @@ class HomeController extends GetxController {
     else if (lineFilter.contains('김포골드라인')) extractedLine = '김포골드라인';
     else if (lineFilter.contains('신림선')) extractedLine = '신림선';
     
+    // 방면 정보 추출 (예: "(성수방면)" 부분)
+    final directionMatch = RegExp(r'\(([^)]+)방면\)').firstMatch(lineFilter);
+    if (directionMatch != null) {
+      extractedDirection = directionMatch.group(1) ?? '';
+    }
+    
     if (extractedLine.isEmpty) {
       return arrivals;
     }
     
-    print('🔍 필터링 적용: $lineFilter → $extractedLine');
+    print('🔍 필터링 적용: $lineFilter → 호선: $extractedLine, 방면: $extractedDirection');
     
-    final filtered = arrivals.where((arrival) {
-      return arrival.lineDisplayName.contains(extractedLine) || 
-             arrival.cleanTrainLineNm.contains(extractedLine);
+    // 먼저 호선으로 필터링
+    List<SubwayArrival> filtered = arrivals.where((arrival) {
+      return arrival.lineDisplayName.contains(extractedLine);
     }).toList();
     
-    print('📊 필터링 결과: ${arrivals.length}개 → ${filtered.length}개');
+    // 방면 정보가 있으면 추가로 방면 필터링
+    if (extractedDirection.isNotEmpty && filtered.isNotEmpty) {
+      final directionFiltered = filtered.where((arrival) {
+        // cleanTrainLineNm에서 방면 검색 (예: "성수행", "성수방면")
+        return arrival.cleanTrainLineNm.contains(extractedDirection) ||
+               arrival.cleanTrainLineNm.contains('${extractedDirection}행') ||
+               arrival.bstatnNm.contains(extractedDirection);
+      }).toList();
+      
+      // 방면 필터링 결과가 있으면 사용, 없으면 호선 필터링만 사용
+      if (directionFiltered.isNotEmpty) {
+        filtered = directionFiltered;
+        print('📊 방면 필터링 적용: ${arrivals.length}개 → 호선: ${filtered.length}개 → 방면: ${directionFiltered.length}개');
+      } else {
+        print('📊 방면 필터링 결과 없음, 호선 필터링만 사용: ${arrivals.length}개 → ${filtered.length}개');
+      }
+    } else {
+      print('📊 호선 필터링만 적용: ${arrivals.length}개 → ${filtered.length}개');
+    }
+    
     return filtered;
   }
 

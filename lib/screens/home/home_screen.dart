@@ -625,13 +625,22 @@ class HomeScreen extends GetView<HomeController> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      stationName,
+                      _extractStationName(stationName),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: color.shade800,
                       ),
                     ),
+                    if (_extractDirectionInfo(stationName).isNotEmpty)
+                      Text(
+                        _extractDirectionInfo(stationName),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: color.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -887,6 +896,26 @@ class HomeScreen extends GetView<HomeController> {
       case '1092': return const Color(0xFF6789CA); // 우이신설선
       default: return Colors.grey;
     }
+  }
+
+  // 역명에서 순수 역명 추출 (예: "강남역 2호선 (성수방면)" → "강남역")
+  String _extractStationName(String fullStationName) {
+    // 첫 번째 공백 이전의 역명만 추출 (역명은 보통 첫 번째 단어)
+    final parts = fullStationName.split(' ');
+    if (parts.isNotEmpty) {
+      return parts.first;
+    }
+    return fullStationName;
+  }
+
+  // 방면 정보 추출 (예: "강남역 2호선 (성수방면)" → "2호선 (성수방면)")
+  String _extractDirectionInfo(String fullStationName) {
+    // 역명 제거 후 나머지 정보 반환
+    final cleanStationName = _extractStationName(fullStationName);
+    if (fullStationName.length > cleanStationName.length) {
+      return fullStationName.substring(cleanStationName.length).trim();
+    }
+    return '';
   }
 
 }
