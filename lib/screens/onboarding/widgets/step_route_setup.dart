@@ -210,7 +210,7 @@ class StepRouteSetup extends GetView<OnboardingController> {
 
                 
                 // 커스텀 하단 버튼
-                _buildCustomBottomBar(selectedDeparture, selectedArrival, transferStations, routeName, isAddNewMode),
+                _buildCustomBottomBar(selectedDeparture, selectedArrival, transferStations, routeName, isAddNewMode, selectedDepartureInfo, selectedArrivalInfo),
               ],
             ),
           ),
@@ -541,7 +541,7 @@ class StepRouteSetup extends GetView<OnboardingController> {
   }
 
 
-  Widget _buildCustomBottomBar(RxnString selectedDeparture, RxnString selectedArrival, RxList<LocationInfo> transferStations, RxnString routeName, bool isAddNewMode) {
+  Widget _buildCustomBottomBar(RxnString selectedDeparture, RxnString selectedArrival, RxList<LocationInfo> transferStations, RxnString routeName, bool isAddNewMode, Rx<LocationInfo?> selectedDepartureInfo, Rx<LocationInfo?> selectedArrivalInfo) {
     return Container(
       padding: const EdgeInsets.all(16),
       child: Obx(() {
@@ -553,7 +553,7 @@ class StepRouteSetup extends GetView<OnboardingController> {
         return GestureDetector(
           onTap: canProceed ? () {
             if (isAddNewMode) {
-              _saveNewRoute(selectedDeparture, selectedArrival, transferStations, routeName);
+              _saveNewRoute(selectedDeparture, selectedArrival, transferStations, routeName, selectedDepartureInfo, selectedArrivalInfo);
             } else {
               // 온보딩 모드에서도 경로명 검증
               if (routeName.value == null || routeName.value!.trim().isEmpty) {
@@ -789,7 +789,7 @@ class StepRouteSetup extends GetView<OnboardingController> {
   }
   
   // 새 경로 저장 (새 경로 추가 모드용)
-  void _saveNewRoute(RxnString selectedDeparture, RxnString selectedArrival, RxList<LocationInfo> transferStations, RxnString routeName) {
+  void _saveNewRoute(RxnString selectedDeparture, RxnString selectedArrival, RxList<LocationInfo> transferStations, RxnString routeName, Rx<LocationInfo?> selectedDepartureInfo, Rx<LocationInfo?> selectedArrivalInfo) {
     final storage = GetStorage();
     
     // 현재 설정된 경로를 새 경로로 저장
@@ -813,8 +813,28 @@ class StepRouteSetup extends GetView<OnboardingController> {
       final newRoute = {
         'id': DateTime.now().millisecondsSinceEpoch.toString(), // 고유 ID 생성
         'name': finalRouteName,
-        'departure': selectedDeparture.value,
-        'arrival': selectedArrival.value,
+        'departure': selectedDepartureInfo.value != null ? {
+          'name': selectedDepartureInfo.value!.name,
+          'type': selectedDepartureInfo.value!.type,
+          'lineInfo': selectedDepartureInfo.value!.lineInfo,
+          'code': selectedDepartureInfo.value!.code,
+        } : {
+          'name': selectedDeparture.value,
+          'type': 'unknown',
+          'lineInfo': '',
+          'code': '',
+        },
+        'arrival': selectedArrivalInfo.value != null ? {
+          'name': selectedArrivalInfo.value!.name,
+          'type': selectedArrivalInfo.value!.type,
+          'lineInfo': selectedArrivalInfo.value!.lineInfo,
+          'code': selectedArrivalInfo.value!.code,
+        } : {
+          'name': selectedArrival.value,
+          'type': 'unknown',
+          'lineInfo': '',
+          'code': '',
+        },
         'transfers': transferStations.map((transfer) => {
           'name': transfer.name,
           'type': transfer.type,
@@ -838,6 +858,7 @@ class StepRouteSetup extends GetView<OnboardingController> {
       
       // 첫 번째 경로라면 현재 경로로도 설정 (기존 로직과 호환성 유지)
       if (routesList.length == 1) {
+        // 구 형식 저장 (호환성 유지)
         storage.write('saved_departure', selectedDeparture.value);
         storage.write('saved_arrival', selectedArrival.value);
         storage.write('saved_route_name', finalRouteName);
@@ -853,6 +874,9 @@ class StepRouteSetup extends GetView<OnboardingController> {
         } else {
           storage.remove('saved_transfers');
         }
+        
+        // 활성 경로 ID 설정
+        storage.write('active_route_id', newRoute['id']);
       }
       
       print('🆕 새 경로 저장 완료');

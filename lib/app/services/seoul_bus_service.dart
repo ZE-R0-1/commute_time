@@ -240,51 +240,66 @@ class SeoulBusService {
           
           // items.item 구조 확인
           final body = data['response']['body'];
-          if (body['items'] != null && body['items']['item'] != null) {
-            final items = body['items']['item'];
+          print('🔍 body 구조 타입: ${body.runtimeType}');
+          print('🔍 body 내용: $body');
+          
+          if (body != null && body is Map && body['items'] != null) {
+            print('🔍 items 확인 중...');
+            final items = body['items'];
+            print('🔍 items 타입: ${items.runtimeType}');
+            print('🔍 items 내용: $items');
             
-            print('✅ 서울 도착정보 API 파싱 완료! 응답 데이터 발견');
-            print('📄 버스 도착정보: $items');
-            
-            // items가 List인지 단일 Map인지 확인
-            List<dynamic> itemList = [];
-            if (items is List) {
-              itemList = items;
-            } else if (items is Map<String, dynamic>) {
-              itemList = [items];
-            }
-            
-            print('✅ 총 ${itemList.length}개의 버스 도착정보 발견');
-            
-            for (int i = 0; i < itemList.length; i++) {
-              final item = itemList[i];
-              try {
-                // 실제 API 응답 구조에 맞게 직접 매핑
-                final arrival = SeoulBusArrival(
-                  nodeId: item['nodeid']?.toString() ?? '',
-                  nodeNm: item['nodenm']?.toString() ?? '',
-                  routeId: item['routeid']?.toString() ?? '',
-                  routeNo: item['routeno']?.toString() ?? '',
-                  routeTp: item['routetp']?.toString() ?? '',
-                  arrPrevStationCnt: int.tryParse(item['arrprevstationcnt']?.toString() ?? '0') ?? 0,
-                  vehicleTp: item['vehicletp']?.toString() ?? '',
-                  arrTime: int.tryParse(item['arrtime']?.toString() ?? '0') ?? 0,
-                );
-                
-                arrivals.add(arrival);
-                
-                print('서울 도착정보 ${i + 1}. ${arrival.routeNo}번');
-                print('   - 노선ID: ${arrival.routeId}');
-                print('   - 노선유형: ${arrival.routeTp}');
-                print('   - 도착시간: ${arrival.arrTimeInMinutes}분 후 (${arrival.arrTime}초)');
-                print('   - 남은 정류장: ${arrival.arrPrevStationCnt}개');
-                print('   - 차량정보: ${arrival.vehicleTp}');
-                print('');
-              } catch (e) {
-                print('❌ 서울 버스 도착정보 파싱 오류 ($i번째): $e');
-                print('   - 원본 데이터: $item');
-                continue;
+            if (items != null && items is Map && items['item'] != null) {
+              final itemData = items['item'];
+              print('🔍 item 데이터 타입: ${itemData.runtimeType}');
+              print('🔍 item 데이터 내용: $itemData');
+              
+              print('✅ 서울 도착정보 API 파싱 완료! 응답 데이터 발견');
+              print('📄 버스 도착정보: $itemData');
+              
+              // itemData가 List인지 단일 Map인지 확인
+              List<dynamic> itemList = [];
+              if (itemData is List) {
+                itemList = itemData;
+              } else if (itemData is Map<String, dynamic>) {
+                itemList = [itemData];
               }
+              
+              print('✅ 총 ${itemList.length}개의 버스 도착정보 발견');
+              
+              for (int i = 0; i < itemList.length; i++) {
+                final item = itemList[i];
+                try {
+                  // 실제 API 응답 구조에 맞게 직접 매핑
+                  final arrival = SeoulBusArrival(
+                    nodeId: item['nodeid']?.toString() ?? '',
+                    nodeNm: item['nodenm']?.toString() ?? '',
+                    routeId: item['routeid']?.toString() ?? '',
+                    routeNo: item['routeno']?.toString() ?? '',
+                    routeTp: item['routetp']?.toString() ?? '',
+                    arrPrevStationCnt: int.tryParse(item['arrprevstationcnt']?.toString() ?? '0') ?? 0,
+                    vehicleTp: item['vehicletp']?.toString() ?? '',
+                    arrTime: int.tryParse(item['arrtime']?.toString() ?? '0') ?? 0,
+                  );
+                  
+                  arrivals.add(arrival);
+                  
+                  print('서울 도착정보 ${i + 1}. ${arrival.routeNo}번');
+                  print('   - 노선ID: ${arrival.routeId}');
+                  print('   - 노선유형: ${arrival.routeTp}');
+                  print('   - 도착시간: ${arrival.arrTimeInMinutes}분 후 (${arrival.arrTime}초)');
+                  print('   - 남은 정류장: ${arrival.arrPrevStationCnt}개');
+                  print('   - 차량정보: ${arrival.vehicleTp}');
+                  print('');
+                } catch (e) {
+                  print('❌ 서울 버스 도착정보 파싱 오류 ($i번째): $e');
+                  print('   - 원본 데이터: $item');
+                  continue;
+                }
+              }
+            } else {
+              print('⚠️ items.item 구조를 찾을 수 없습니다.');
+              print('📄 items 구조: $items');
             }
           } else {
             print('⚠️ 서울 도착정보가 없거나 items.item 구조를 찾을 수 없습니다.');

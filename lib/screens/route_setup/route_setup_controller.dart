@@ -36,8 +36,20 @@ class RouteSetupController extends GetxController {
         print('=== 경로 데이터: ${route['name']} ===');
         print('  ID: ${route['id']}');
         print('  이름: ${route['name']}');
-        print('  출발지: ${route['departure']}');
-        print('  도착지: ${route['arrival']}');
+        final departure = route['departure'];
+        final arrival = route['arrival'];
+        
+        if (departure is Map) {
+          print('  출발지: ${departure['name']} (${departure['type']}: ${departure['lineInfo']})');
+        } else {
+          print('  출발지: $departure (구 형식)');
+        }
+        
+        if (arrival is Map) {
+          print('  도착지: ${arrival['name']} (${arrival['type']}: ${arrival['lineInfo']})');
+        } else {
+          print('  도착지: $arrival (구 형식)');
+        }
         print('  생성일: ${route['createdAt']}');
         
         final transfers = route['transfers'] as List?;
@@ -81,8 +93,20 @@ class RouteSetupController extends GetxController {
         print('=== 경로 데이터: ${route['name']} ===');
         print('  ID: ${route['id']}');
         print('  이름: ${route['name']}');
-        print('  출발지: ${route['departure']}');
-        print('  도착지: ${route['arrival']}');
+        final departure = route['departure'];
+        final arrival = route['arrival'];
+        
+        if (departure is Map) {
+          print('  출발지: ${departure['name']} (${departure['type']}: ${departure['lineInfo']})');
+        } else {
+          print('  출발지: $departure (구 형식)');
+        }
+        
+        if (arrival is Map) {
+          print('  도착지: ${arrival['name']} (${arrival['type']}: ${arrival['lineInfo']})');
+        } else {
+          print('  도착지: $arrival (구 형식)');
+        }
         print('  생성일: ${route['createdAt']}');
         
         final transfers = route['transfers'] as List?;
@@ -161,7 +185,12 @@ class RouteSetupController extends GetxController {
     if (result != null && result['name'] != null) {
       // 경로 목록에서 해당 경로 업데이트
       final updatedRoute = Map<String, dynamic>.from(routesList[routeIndex]);
-      updatedRoute[locationType] = result['name'];
+      updatedRoute[locationType] = {
+        'name': result['name'],
+        'type': result['type'] ?? 'subway',
+        'lineInfo': result['lineInfo'] ?? '',
+        'code': result['code'] ?? '',
+      };
       routesList[routeIndex] = updatedRoute;
       
       // 스토리지에 저장

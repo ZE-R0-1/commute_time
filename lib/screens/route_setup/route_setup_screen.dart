@@ -258,8 +258,13 @@ class RouteSetupScreen extends GetView<RouteSetupController> {
   Widget _buildRouteCard(Map<String, dynamic> route) {
     final routeId = route['id'] ?? '';
     final routeName = route['name'] ?? '이름 없는 경로';
-    final departure = route['departure'] ?? '';
-    final arrival = route['arrival'] ?? '';
+    // 출발지 처리 (새 구조 vs 구 구조 호환)
+    final departureData = route['departure'];
+    final departure = departureData is Map ? (departureData['name'] ?? '') : (departureData?.toString() ?? '');
+    
+    // 도착지 처리 (새 구조 vs 구 구조 호환)
+    final arrivalData = route['arrival'];
+    final arrival = arrivalData is Map ? (arrivalData['name'] ?? '') : (arrivalData?.toString() ?? '');
     final transfers = route['transfers'] as List? ?? [];
     final createdAt = route['createdAt'] as String?;
     
