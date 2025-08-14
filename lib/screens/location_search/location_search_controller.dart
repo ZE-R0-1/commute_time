@@ -419,6 +419,7 @@ class LocationSearchController extends GetxController {
     String stationName = '';
     String lineInfo = '';
     String code = '';
+    String cityCode = '';
     double latitude = 0;
     double longitude = 0;
 
@@ -426,12 +427,14 @@ class LocationSearchController extends GetxController {
       stationName = busStop.stationName;
       lineInfo = '경기도 버스정류장';
       code = busStop.stationId;
+      cityCode = ''; // 경기도 버스는 cityCode가 필요 없음
       latitude = busStop.y;
       longitude = busStop.x;
     } else if (busStop is SeoulBusStop) {
       stationName = busStop.stationNm;
       lineInfo = '서울 버스정류장';
       code = busStop.stationId;
+      cityCode = '23'; // 서울 버스의 cityCode
       latitude = busStop.gpsY;
       longitude = busStop.gpsX;
     }
@@ -441,6 +444,7 @@ class LocationSearchController extends GetxController {
       'type': 'bus',
       'lineInfo': lineInfo,
       'code': code,
+      'cityCode': cityCode,
       'latitude': latitude,
       'longitude': longitude,
     });

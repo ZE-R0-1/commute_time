@@ -650,7 +650,7 @@ class HomeController extends GetxController {
     } else if (lineInfo.contains('서울')) {
       // 서울 버스 도착정보 (cityCode 필요)
       // cityCode를 저장된 데이터에서 가져오거나 기본값 사용
-      final cityCode = locationData['cityCode']?.toString() ?? '11';
+      final cityCode = locationData['cityCode']?.toString() ?? '23';
       print('🏙️ 서울 버스 API 호출: cityCode=$cityCode, nodeId=$stationCode');
       final arrivals = await SeoulBusService.getBusArrivalInfo(cityCode, stationCode);
       

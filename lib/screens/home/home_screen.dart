@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import 'home_controller.dart';
 import '../../app/services/weather_service.dart';
 import '../../app/services/subway_service.dart';
+import '../../app/services/bus_arrival_service.dart';
+import '../../app/services/seoul_bus_service.dart';
 
 class HomeScreen extends GetView<HomeController> {
   const HomeScreen({super.key});
@@ -676,25 +678,32 @@ class HomeScreen extends GetView<HomeController> {
     // 로딩 상태 확인
     bool isLoading = false;
     String errorMessage = '';
-    List<SubwayArrival> arrivalData = [];
+    List<SubwayArrival> subwayArrivalData = [];
+    List<BusArrivalInfo> busArrivalData = [];
+    List<SeoulBusArrival> seoulBusArrivalData = [];
     
     switch (stationType) {
       case 'departure':
         isLoading = controller.isLoadingArrival.value;
         errorMessage = controller.arrivalError.value;
-        arrivalData = controller.departureArrivalInfo;
+        subwayArrivalData = controller.departureArrivalInfo;
+        busArrivalData = controller.departureBusArrivalInfo;
+        seoulBusArrivalData = controller.departureSeoulBusArrivalInfo;
         break;
       case 'transfer':
         if (transferIndex != null && transferIndex < controller.transferArrivalInfo.length) {
           isLoading = controller.isLoadingTransferArrival.value;
           errorMessage = controller.transferArrivalError.value;
-          arrivalData = controller.transferArrivalInfo[transferIndex];
+          subwayArrivalData = controller.transferArrivalInfo[transferIndex];
+          // TODO: 환승지 버스 도착정보 처리
         }
         break;
       case 'destination':
         isLoading = controller.isLoadingDestinationArrival.value;
         errorMessage = controller.destinationArrivalError.value;
-        arrivalData = controller.destinationArrivalInfo;
+        subwayArrivalData = controller.destinationArrivalInfo;
+        busArrivalData = controller.destinationBusArrivalInfo;
+        seoulBusArrivalData = controller.destinationSeoulBusArrivalInfo;
         break;
     }
 
@@ -729,13 +738,38 @@ class HomeScreen extends GetView<HomeController> {
       );
     }
 
-    if (arrivalData.isEmpty) {
+    // 지하철, 경기도 버스, 서울 버스 도착정보 모두 확인
+    bool hasSubwayData = subwayArrivalData.isNotEmpty;
+    bool hasBusData = busArrivalData.isNotEmpty;
+    bool hasSeoulBusData = seoulBusArrivalData.isNotEmpty;
+    
+    if (!hasSubwayData && !hasBusData && !hasSeoulBusData) {
       return const SizedBox.shrink();
     }
 
+    // 서울 버스 도착정보가 있으면 표시
+    if (hasSeoulBusData) {
+      return _buildSeoulBusArrivalWidget(color, seoulBusArrivalData);
+    }
+    
+    // 경기도 버스 도착정보가 있으면 표시  
+    if (hasBusData) {
+      return _buildBusArrivalWidget(color, busArrivalData);
+    }
+    
+    // 지하철 도착정보가 있으면 표시
+    if (hasSubwayData) {
+      return _buildSubwayArrivalWidget(color, subwayArrivalData);
+    }
+    
+    return const SizedBox.shrink();
+  }
+
+  // 지하철 도착정보 위젯
+  Widget _buildSubwayArrivalWidget(MaterialColor color, List<SubwayArrival> subwayArrivalData) {
     // 방향별로 그룹화 (바텀시트와 동일한 로직)
     final Map<String, List<SubwayArrival>> groupedByDirection = {};
-    for (final arrival in arrivalData) {
+    for (final arrival in subwayArrivalData) {
       final key = '${arrival.lineDisplayName}_${arrival.cleanTrainLineNm}';
       if (!groupedByDirection.containsKey(key)) {
         groupedByDirection[key] = [];
@@ -826,6 +860,253 @@ class HomeScreen extends GetView<HomeController> {
         }).toList(),
       ),
     );
+  }
+  
+  // 경기도 버스 도착정보 위젯
+  Widget _buildBusArrivalWidget(MaterialColor color, List<BusArrivalInfo> busArrivalData) {
+    if (busArrivalData.isEmpty) return const SizedBox.shrink();
+    
+    return Container(
+      width: 160,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: busArrivalData.take(2).map((busInfo) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 버스 번호 표시
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _getBusTypeColor(busInfo.routeTypeName),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        busInfo.routeName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 4),
+                
+                // 버스 유형 표시
+                Text(
+                  busInfo.routeTypeName,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                
+                const SizedBox(height: 6),
+                
+                // 첫 번째 버스
+                _buildBusArrivalTimeRow(busInfo, true, isFirst: true),
+                
+                // 두 번째 버스 (있을 때만)
+                if (busInfo.predictTime2 > 0) ...[
+                  const SizedBox(height: 3),
+                  _buildBusArrivalTimeRow(busInfo, false, isFirst: false),
+                ],
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+  
+  // 서울 버스 도착정보 위젯
+  Widget _buildSeoulBusArrivalWidget(MaterialColor color, List<SeoulBusArrival> seoulBusArrivalData) {
+    if (seoulBusArrivalData.isEmpty) return const SizedBox.shrink();
+    
+    return Container(
+      width: 160,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: seoulBusArrivalData.take(2).map((busInfo) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 버스 번호 표시
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _getSeoulBusTypeColor(busInfo.routeTp),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        busInfo.routeNo,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 4),
+                
+                // 버스 유형 표시
+                Text(
+                  busInfo.routeTp,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                
+                const SizedBox(height: 6),
+                
+                // 도착 정보
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${busInfo.arrTimeInMinutes}분 후',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green[600],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 2),
+                
+                // 정류장 수 정보
+                Text(
+                  '${busInfo.arrPrevStationCnt}정류장 전',
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+  
+  // 경기도 버스 도착시간 행 위젯
+  Widget _buildBusArrivalTimeRow(BusArrivalInfo busInfo, bool isFirstBus, {required bool isFirst}) {
+    final predictTime = isFirstBus ? busInfo.predictTime1 : busInfo.predictTime2;
+    final locationNo = isFirstBus ? busInfo.locationNo1 : busInfo.locationNo2;
+    
+    if (predictTime <= 0) return const SizedBox.shrink();
+    
+    Color statusColor = Colors.green[600]!;
+    if (predictTime <= 1) {
+      statusColor = Colors.red[600]!;
+    } else if (predictTime <= 3) {
+      statusColor = Colors.orange[600]!;
+    }
+
+    return Row(
+      children: [
+        // 도착시간
+        Expanded(
+          child: Text(
+            '${predictTime}분 후',
+            style: TextStyle(
+              fontSize: isFirst ? 11 : 10,
+              fontWeight: isFirst ? FontWeight.bold : FontWeight.w500,
+              color: statusColor,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        
+        // 정류장 수
+        Text(
+          '${locationNo}정류장',
+          style: TextStyle(
+            fontSize: 8,
+            color: Colors.grey[500],
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+      ],
+    );
+  }
+  
+  // 경기도 버스 유형별 색상
+  Color _getBusTypeColor(String routeTypeName) {
+    switch (routeTypeName) {
+      case '직행좌석': return Colors.red;
+      case '좌석': return Colors.blue;
+      case '일반': return Colors.green;
+      case '광역급행': return Colors.purple;
+      default: return Colors.grey;
+    }
+  }
+  
+  // 서울 버스 유형별 색상
+  Color _getSeoulBusTypeColor(String routeType) {
+    switch (routeType) {
+      case '광역버스': return Colors.red;
+      case '간선버스': return Colors.blue;
+      case '지선버스': return Colors.green;
+      case '순환버스': return Colors.orange;
+      default: return Colors.grey;
+    }
   }
 
   // 도착시간 행 위젯
