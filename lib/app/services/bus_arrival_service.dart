@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class BusArrivalService {
-  static const String baseUrl = 'https://apis.data.go.kr/6410000/busarrivalservice/v2';
+  static String get baseUrl => dotenv.env['GYEONGGI_BUS_ARRIVAL_API_URL'] ?? 'https://apis.data.go.kr/6410000/busarrivalservice/v2';
   
   // 정류소별 버스 도착정보 조회
   static Future<List<BusArrivalInfo>> getBusArrivalInfo(String stationId) async {
