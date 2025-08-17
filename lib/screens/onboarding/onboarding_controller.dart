@@ -508,21 +508,48 @@ class OnboardingController extends GetxController {
       print('=== 경로 데이터 영구 저장 시작 ===');
       
       // 임시 저장소에서 경로 데이터 읽기
-      final tempDeparture = _storage.read<String>('onboarding_departure');
-      final tempArrival = _storage.read<String>('onboarding_arrival');
+      final tempDeparture = _storage.read('onboarding_departure');
+      final tempArrival = _storage.read('onboarding_arrival');
       final tempTransfers = _storage.read<List>('onboarding_transfers');
       
       // 경로 데이터가 있는 경우에만 저장
       if (tempDeparture != null && tempArrival != null) {
         // 경로명도 저장된 것이 있으면 사용, 없으면 자동 생성 (기존 호환성)
         final savedRouteName = _storage.read<String>('onboarding_route_name');
-        final finalRouteName = savedRouteName ?? routeName.value ?? '$tempDeparture → $tempArrival';
+        
+        // 출발지/도착지 이름 추출 (Map인 경우와 String인 경우 모두 처리)
+        String departureName;
+        String arrivalName;
+        
+        if (tempDeparture is Map) {
+          departureName = tempDeparture['name'] ?? '출발지';
+        } else {
+          departureName = tempDeparture.toString();
+        }
+        
+        if (tempArrival is Map) {
+          arrivalName = tempArrival['name'] ?? '도착지';
+        } else {
+          arrivalName = tempArrival.toString();
+        }
+        
+        final finalRouteName = savedRouteName ?? routeName.value ?? '$departureName → $arrivalName';
         
         final newRoute = {
           'id': DateTime.now().millisecondsSinceEpoch.toString(),
           'name': finalRouteName,
-          'departure': tempDeparture,
-          'arrival': tempArrival,
+          'departure': tempDeparture is Map ? tempDeparture : {
+            'name': departureName,
+            'type': _guessTransportType(departureName),
+            'lineInfo': '',
+            'code': '',
+          },
+          'arrival': tempArrival is Map ? tempArrival : {
+            'name': arrivalName,
+            'type': _guessTransportType(arrivalName),
+            'lineInfo': '',
+            'code': '',
+          },
           'transfers': tempTransfers ?? [],
           'createdAt': DateTime.now().toIso8601String(),
         };
@@ -561,6 +588,30 @@ class OnboardingController extends GetxController {
     } catch (e) {
       print('온보딩 임시 데이터 정리 오류: $e');
     }
+  }
+
+  // 위치 이름으로 교통수단 타입 추정
+  String _guessTransportType(String locationName) {
+    final name = locationName.toLowerCase();
+    
+    // 버스 관련 키워드
+    if (name.contains('버스') || 
+        name.contains('정류장') || 
+        name.contains('정류소') ||
+        RegExp(r'\d+번').hasMatch(name)) { // 숫자+번 패턴 (예: 643번)
+      return 'bus';
+    }
+    
+    // 지하철 관련 키워드
+    if (name.contains('역') || 
+        name.contains('지하철') ||
+        name.contains('호선') ||
+        name.contains('선') && (name.contains('분당') || name.contains('신분당') || name.contains('경의') || name.contains('중앙'))) {
+      return 'subway';
+    }
+    
+    // 기본값은 지하철
+    return 'subway';
   }
 
 }

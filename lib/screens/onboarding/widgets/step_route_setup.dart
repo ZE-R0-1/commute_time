@@ -38,7 +38,7 @@ class StepRouteSetup extends GetView<OnboardingController> {
     final RxnString routeName = RxnString(isAddNewMode ? null : '출근경로');
     
     // 저장된 데이터 복원
-    _loadSavedRouteData(selectedDeparture, transferStations, selectedArrival, routeName, isAddNewMode);
+    _loadSavedRouteData(selectedDeparture, transferStations, selectedArrival, routeName, isAddNewMode, selectedDepartureInfo, selectedArrivalInfo);
 
     return Scaffold(
       body: Container(
@@ -88,7 +88,7 @@ class StepRouteSetup extends GetView<OnboardingController> {
                                   selectedDepartureInfo.value = LocationInfo(
                                     name: result['name'],
                                     type: result['type'] ?? 'subway',
-                                    lineInfo: result['lineInfo'] ?? '출발지',
+                                    lineInfo: result['lineInfo'] ?? '',
                                     code: result['code'] ?? '',
                                   );
                                 }
@@ -178,7 +178,7 @@ class StepRouteSetup extends GetView<OnboardingController> {
                                   selectedArrivalInfo.value = LocationInfo(
                                     name: result['name'],
                                     type: result['type'] ?? 'subway',
-                                    lineInfo: result['lineInfo'] ?? '도착지',
+                                    lineInfo: result['lineInfo'] ?? '',
                                     code: result['code'] ?? '',
                                   );
                                 }
@@ -683,6 +683,8 @@ class StepRouteSetup extends GetView<OnboardingController> {
     RxnString selectedArrival,
     RxnString routeName,
     bool isAddNewMode,
+    Rx<LocationInfo?> selectedDepartureInfo,
+    Rx<LocationInfo?> selectedArrivalInfo,
   ) {
     final storage = GetStorage();
     
@@ -693,18 +695,40 @@ class StepRouteSetup extends GetView<OnboardingController> {
     }
     
     // 온보딩 모드에서는 기존 데이터 복원
-    // 출발지 복원
-    final savedDeparture = storage.read<String>('onboarding_departure');
+    // 출발지 복원 (Map 또는 String 지원)
+    final savedDeparture = storage.read('onboarding_departure');
     if (savedDeparture != null) {
-      selectedDeparture.value = savedDeparture;
-      print('🔄 출발지 복원: $savedDeparture');
+      if (savedDeparture is Map) {
+        selectedDeparture.value = savedDeparture['name'];
+        selectedDepartureInfo.value = LocationInfo(
+          name: savedDeparture['name'] ?? '',
+          type: savedDeparture['type'] ?? 'subway',
+          lineInfo: savedDeparture['lineInfo'] ?? '',
+          code: savedDeparture['code'] ?? '',
+        );
+        print('🔄 출발지 복원 (Map): ${savedDeparture['name']}');
+      } else {
+        selectedDeparture.value = savedDeparture.toString();
+        print('🔄 출발지 복원 (String): $savedDeparture');
+      }
     }
     
-    // 도착지 복원
-    final savedArrival = storage.read<String>('onboarding_arrival');
+    // 도착지 복원 (Map 또는 String 지원)
+    final savedArrival = storage.read('onboarding_arrival');
     if (savedArrival != null) {
-      selectedArrival.value = savedArrival;
-      print('🔄 도착지 복원: $savedArrival');
+      if (savedArrival is Map) {
+        selectedArrival.value = savedArrival['name'];
+        selectedArrivalInfo.value = LocationInfo(
+          name: savedArrival['name'] ?? '',
+          type: savedArrival['type'] ?? 'subway',
+          lineInfo: savedArrival['lineInfo'] ?? '',
+          code: savedArrival['code'] ?? '',
+        );
+        print('🔄 도착지 복원 (Map): ${savedArrival['name']}');
+      } else {
+        selectedArrival.value = savedArrival.toString();
+        print('🔄 도착지 복원 (String): $savedArrival');
+      }
     }
     
     // 경로명 복원
@@ -732,10 +756,10 @@ class StepRouteSetup extends GetView<OnboardingController> {
     }
     
     // 데이터 변경 감지 및 자동 저장 설정 (온보딩 모드에서만)
-    selectedDeparture.listen((value) => _saveRouteData(selectedDeparture, transferStations, selectedArrival, routeName));
-    selectedArrival.listen((value) => _saveRouteData(selectedDeparture, transferStations, selectedArrival, routeName));
-    transferStations.listen((value) => _saveRouteData(selectedDeparture, transferStations, selectedArrival, routeName));
-    routeName.listen((value) => _saveRouteData(selectedDeparture, transferStations, selectedArrival, routeName));
+    selectedDeparture.listen((value) => _saveRouteData(selectedDeparture, transferStations, selectedArrival, routeName, selectedDepartureInfo, selectedArrivalInfo));
+    selectedArrival.listen((value) => _saveRouteData(selectedDeparture, transferStations, selectedArrival, routeName, selectedDepartureInfo, selectedArrivalInfo));
+    transferStations.listen((value) => _saveRouteData(selectedDeparture, transferStations, selectedArrival, routeName, selectedDepartureInfo, selectedArrivalInfo));
+    routeName.listen((value) => _saveRouteData(selectedDeparture, transferStations, selectedArrival, routeName, selectedDepartureInfo, selectedArrivalInfo));
   }
   
   // 경로 데이터 저장
@@ -744,19 +768,47 @@ class StepRouteSetup extends GetView<OnboardingController> {
     RxList<LocationInfo> transferStations,
     RxnString selectedArrival,
     RxnString routeName,
+    Rx<LocationInfo?> selectedDepartureInfo,
+    Rx<LocationInfo?> selectedArrivalInfo,
   ) {
     final storage = GetStorage();
     
-    // 출발지 저장
-    if (selectedDeparture.value != null) {
-      storage.write('onboarding_departure', selectedDeparture.value);
+    // 출발지 저장 (LocationInfo 객체로 저장)
+    if (selectedDepartureInfo.value != null) {
+      storage.write('onboarding_departure', {
+        'name': selectedDepartureInfo.value!.name,
+        'type': selectedDepartureInfo.value!.type,
+        'lineInfo': selectedDepartureInfo.value!.lineInfo,
+        'code': selectedDepartureInfo.value!.code,
+      });
+    } else if (selectedDeparture.value != null) {
+      // fallback: name만 있는 경우 (지하철로 추정)
+      storage.write('onboarding_departure', {
+        'name': selectedDeparture.value,
+        'type': 'subway',
+        'lineInfo': '',
+        'code': '',
+      });
     } else {
       storage.remove('onboarding_departure');
     }
     
-    // 도착지 저장
-    if (selectedArrival.value != null) {
-      storage.write('onboarding_arrival', selectedArrival.value);
+    // 도착지 저장 (LocationInfo 객체로 저장)
+    if (selectedArrivalInfo.value != null) {
+      storage.write('onboarding_arrival', {
+        'name': selectedArrivalInfo.value!.name,
+        'type': selectedArrivalInfo.value!.type,
+        'lineInfo': selectedArrivalInfo.value!.lineInfo,
+        'code': selectedArrivalInfo.value!.code,
+      });
+    } else if (selectedArrival.value != null) {
+      // fallback: name만 있는 경우 (지하철로 추정)
+      storage.write('onboarding_arrival', {
+        'name': selectedArrival.value,
+        'type': 'subway',
+        'lineInfo': '',
+        'code': '',
+      });
     } else {
       storage.remove('onboarding_arrival');
     }

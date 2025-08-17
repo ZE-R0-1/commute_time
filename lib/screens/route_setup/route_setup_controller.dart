@@ -42,13 +42,13 @@ class RouteSetupController extends GetxController {
         if (departure is Map) {
           print('  출발지: ${departure['name']} (${departure['type']}: ${departure['lineInfo']})');
         } else {
-          print('  출발지: $departure (구 형식)');
+          print('  ⚠️ 출발지: $departure (마이그레이션 필요)');
         }
         
         if (arrival is Map) {
           print('  도착지: ${arrival['name']} (${arrival['type']}: ${arrival['lineInfo']})');
         } else {
-          print('  도착지: $arrival (구 형식)');
+          print('  ⚠️ 도착지: $arrival (마이그레이션 필요)');
         }
         print('  생성일: ${route['createdAt']}');
         
@@ -99,13 +99,13 @@ class RouteSetupController extends GetxController {
         if (departure is Map) {
           print('  출발지: ${departure['name']} (${departure['type']}: ${departure['lineInfo']})');
         } else {
-          print('  출발지: $departure (구 형식)');
+          print('  ⚠️ 출발지: $departure (마이그레이션 필요)');
         }
         
         if (arrival is Map) {
           print('  도착지: ${arrival['name']} (${arrival['type']}: ${arrival['lineInfo']})');
         } else {
-          print('  도착지: $arrival (구 형식)');
+          print('  ⚠️ 도착지: $arrival (마이그레이션 필요)');
         }
         print('  생성일: ${route['createdAt']}');
         

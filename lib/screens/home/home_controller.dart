@@ -356,6 +356,7 @@ class HomeController extends GetxController {
     print('=== 경로 데이터 로딩 ===');
     
     final savedRoutes = _storage.read<List>('saved_routes');
+    
     if (savedRoutes != null && savedRoutes.isNotEmpty) {
       // 저장된 활성 경로 ID 확인
       final savedActiveRouteId = _storage.read<String>('active_route_id');
@@ -395,7 +396,7 @@ class HomeController extends GetxController {
       if (targetRoute != null) {
         routeName.value = targetRoute['name'] ?? '저장된 경로';
         
-        // 출발지 처리 (새 구조 vs 구 구조 호환)
+        // 출발지 처리 (Map 구조만 지원)
         final departure = targetRoute['departure'];
         print('🔍 [홈화면] 출발지 원본 데이터: $departure');
         print('🔍 [홈화면] 출발지 데이터 타입: ${departure.runtimeType}');
@@ -403,11 +404,11 @@ class HomeController extends GetxController {
           print('🔍 [홈화면] 출발지 상세정보: name=${departure['name']}, type=${departure['type']}, lineInfo=${departure['lineInfo']}, code=${departure['code']}');
           departureStation.value = departure['name'] ?? '';
         } else {
-          print('🔍 [홈화면] 출발지 구 형식 데이터: $departure');
+          print('⚠️ [홈화면] 출발지가 구형식 데이터입니다. 마이그레이션이 필요합니다.');
           departureStation.value = departure?.toString() ?? '';
         }
         
-        // 도착지 처리 (새 구조 vs 구 구조 호환)
+        // 도착지 처리 (Map 구조만 지원)
         final arrival = targetRoute['arrival'];
         print('🔍 [홈화면] 도착지 원본 데이터: $arrival');
         print('🔍 [홈화면] 도착지 데이터 타입: ${arrival.runtimeType}');
@@ -415,7 +416,7 @@ class HomeController extends GetxController {
           print('🔍 [홈화면] 도착지 상세정보: name=${arrival['name']}, type=${arrival['type']}, lineInfo=${arrival['lineInfo']}, code=${arrival['code']}');
           arrivalStation.value = arrival['name'] ?? '';
         } else {
-          print('🔍 [홈화면] 도착지 구 형식 데이터: $arrival');
+          print('⚠️ [홈화면] 도착지가 구형식 데이터입니다. 마이그레이션이 필요합니다.');
           arrivalStation.value = arrival?.toString() ?? '';
         }
         
@@ -508,19 +509,21 @@ class HomeController extends GetxController {
           // 홈화면 데이터 즉시 업데이트
           routeName.value = routeMap['name'] ?? '저장된 경로';
           
-          // 출발지 처리 (새 구조 vs 구 구조 호환)
+          // 출발지 처리 (Map 구조만 지원)
           final departure = routeMap['departure'];
           if (departure is Map) {
             departureStation.value = departure['name'] ?? '';
           } else {
+            print('⚠️ [경로적용] 출발지가 구형식 데이터입니다.');
             departureStation.value = departure?.toString() ?? '';
           }
           
-          // 도착지 처리 (새 구조 vs 구 구조 호환)
+          // 도착지 처리 (Map 구조만 지원)
           final arrival = routeMap['arrival'];
           if (arrival is Map) {
             arrivalStation.value = arrival['name'] ?? '';
           } else {
+            print('⚠️ [경로적용] 도착지가 구형식 데이터입니다.');
             arrivalStation.value = arrival?.toString() ?? '';
           }
           
