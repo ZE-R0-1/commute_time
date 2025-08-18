@@ -646,10 +646,19 @@ class HomeController extends GetxController {
       } else if (locationType == 'destination') {
         destinationBusArrivalInfo.value = arrivals;
         destinationSeoulBusArrivalInfo.clear(); // 서울버스 정보 클리어
+      } else if (locationType.startsWith('transfer_')) {
+        // 환승지 버스 도착정보 처리
+        final transferIndex = int.tryParse(locationType.replaceFirst('transfer_', '')) ?? 0;
+        
+        // transferBusArrivalInfo 리스트 크기 확장
+        while (transferBusArrivalInfo.length <= transferIndex) {
+          transferBusArrivalInfo.add(<BusArrivalInfo>[].obs);
+        }
+        
+        transferBusArrivalInfo[transferIndex] = arrivals.obs;
+        print('✅ 환승지 ${transferIndex + 1} 경기도 버스 도착정보 저장: ${arrivals.length}개');
       }
-      // TODO: 환승지 버스 도착정보 처리 추가
       
-      print('✅ 경기도 버스 도착정보 로딩 완료: ${arrivals.length}개');
     } else if (lineInfo.contains('서울')) {
       // 서울 버스 도착정보 (cityCode 필요)
       // cityCode를 저장된 데이터에서 가져오거나 기본값 사용
@@ -664,10 +673,19 @@ class HomeController extends GetxController {
       } else if (locationType == 'destination') {
         destinationSeoulBusArrivalInfo.value = arrivals;
         destinationBusArrivalInfo.clear(); // 경기도버스 정보 클리어
+      } else if (locationType.startsWith('transfer_')) {
+        // 환승지 서울 버스 도착정보 처리
+        final transferIndex = int.tryParse(locationType.replaceFirst('transfer_', '')) ?? 0;
+        
+        // transferSeoulBusArrivalInfo 리스트 크기 확장
+        while (transferSeoulBusArrivalInfo.length <= transferIndex) {
+          transferSeoulBusArrivalInfo.add(<SeoulBusArrival>[].obs);
+        }
+        
+        transferSeoulBusArrivalInfo[transferIndex] = arrivals.obs;
+        print('✅ 환승지 ${transferIndex + 1} 서울 버스 도착정보 저장: ${arrivals.length}개');
       }
-      // TODO: 환승지 버스 도착정보 처리 추가
       
-      print('✅ 서울 버스 도착정보 로딩 완료: ${arrivals.length}개');
     }
   }
   
@@ -945,17 +963,20 @@ class HomeController extends GetxController {
         if (stationName.isNotEmpty) {
           try {
             if (type == 'bus') {
+              // 버스 도착정보 로딩 (별도 저장소에 저장)
               await _loadBusArrivalInfo('transfer_${i}', transferStation);
               // 버스인 경우 지하철 도착정보는 빈 배열로 설정
               allTransferArrivals.add([]);
+              print('✅ 환승지 ${i + 1} 버스 도착정보 완료');
             } else if (type == 'subway') {
-              await _loadSubwayArrivalInfo('transfer_${i}', transferStation);
-              // 지하철 도착정보를 배열에 추가하는 로직은 _loadSubwayArrivalInfo 내부에서 처리
+              // 지하철 도착정보 로딩
               String cleanStationName = _cleanStationName(stationName);
               final allArrivals = await SubwaySearchService.getArrivalInfo(cleanStationName);
               final filteredArrivals = _filterArrivalsByLine(allArrivals, stationName);
               allTransferArrivals.add(filteredArrivals);
               print('✅ 환승지 ${i + 1} 지하철 도착정보 성공: ${allArrivals.length}개 → 필터링 후 ${filteredArrivals.length}개');
+            } else {
+              allTransferArrivals.add([]);
             }
           } catch (e) {
             print('❌ 환승지 ${i + 1} 도착정보 로딩 오류: $e');

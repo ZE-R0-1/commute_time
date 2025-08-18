@@ -691,11 +691,24 @@ class HomeScreen extends GetView<HomeController> {
         seoulBusArrivalData = controller.departureSeoulBusArrivalInfo;
         break;
       case 'transfer':
-        if (transferIndex != null && transferIndex < controller.transferArrivalInfo.length) {
+        if (transferIndex != null) {
           isLoading = controller.isLoadingTransferArrival.value;
           errorMessage = controller.transferArrivalError.value;
-          subwayArrivalData = controller.transferArrivalInfo[transferIndex];
-          // TODO: 환승지 버스 도착정보 처리
+          
+          // 지하철 도착정보
+          if (transferIndex < controller.transferArrivalInfo.length) {
+            subwayArrivalData = controller.transferArrivalInfo[transferIndex];
+          }
+          
+          // 버스 도착정보 (경기도)
+          if (transferIndex < controller.transferBusArrivalInfo.length) {
+            busArrivalData = controller.transferBusArrivalInfo[transferIndex];
+          }
+          
+          // 버스 도착정보 (서울)
+          if (transferIndex < controller.transferSeoulBusArrivalInfo.length) {
+            seoulBusArrivalData = controller.transferSeoulBusArrivalInfo[transferIndex];
+          }
         }
         break;
       case 'destination':
