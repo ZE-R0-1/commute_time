@@ -190,6 +190,8 @@ class RouteSetupController extends GetxController {
         'type': result['type'] ?? 'subway',
         'lineInfo': result['lineInfo'] ?? '',
         'code': result['code'] ?? '',
+        'routeId': result['routeId'] ?? '',
+        'staOrder': result['staOrder'] ?? 0,
       };
       routesList[routeIndex] = updatedRoute;
       
@@ -230,6 +232,8 @@ class RouteSetupController extends GetxController {
           'type': result['type'] ?? 'subway',
           'lineInfo': result['lineInfo'] ?? '',
           'code': result['code'] ?? '',
+          'routeId': result['routeId'] ?? '',
+          'staOrder': result['staOrder'] ?? 0,
         };
         updatedRoute['transfers'] = transfers;
         routesList[routeIndex] = updatedRoute;
@@ -298,6 +302,8 @@ class RouteSetupController extends GetxController {
         'type': result['type'] ?? 'subway',
         'lineInfo': result['lineInfo'] ?? '',
         'code': result['code'] ?? '',
+        'routeId': result['routeId'] ?? '',
+        'staOrder': result['staOrder'] ?? 0,
       });
       
       updatedRoute['transfers'] = transfers;

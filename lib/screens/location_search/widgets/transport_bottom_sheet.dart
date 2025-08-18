@@ -730,6 +730,8 @@ class TransportBottomSheet {
                       'latitude': busStop.y,
                       'longitude': busStop.x,
                       'routeName': info.routeName,
+                      'routeId': info.routeId,
+                      'staOrder': info.staOrder,
                     });
                   },
                   child: Container(

@@ -108,6 +108,7 @@ class BusArrivalService {
               plateNo2: item['plateNo2']?.toString() ?? '',
               remainSeatCnt1: int.tryParse(item['remainSeatCnt1']?.toString() ?? '0') ?? 0,
               remainSeatCnt2: int.tryParse(item['remainSeatCnt2']?.toString() ?? '0') ?? 0,
+              staOrder: int.tryParse(item['staOrder']?.toString() ?? '0') ?? 0,
             );
             
             arrivalInfos.add(arrivalInfo);
@@ -153,6 +154,7 @@ class BusArrivalInfo {
   final String plateNo2;         // 두번째차량 차량번호
   final int remainSeatCnt1;      // 첫번째차량 빈자리수
   final int remainSeatCnt2;      // 두번째차량 빈자리수
+  final int staOrder;            // 정류소 순번
   final DateTime loadedAt;       // 데이터 로드 시간
 
   BusArrivalInfo({
@@ -171,6 +173,7 @@ class BusArrivalInfo {
     required this.plateNo2,
     required this.remainSeatCnt1,
     required this.remainSeatCnt2,
+    required this.staOrder,
     DateTime? loadedAt,
   }) : loadedAt = loadedAt ?? DateTime.now();
 

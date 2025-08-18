@@ -9,12 +9,16 @@ class LocationInfo {
   final String type; // 'subway' 또는 'bus'
   final String lineInfo;
   final String code;
+  final String? routeId;    // 버스 노선 ID (선택사항)
+  final int? staOrder;      // 정류소 순번 (선택사항)
 
   LocationInfo({
     required this.name,
     required this.type,
     required this.lineInfo,
     required this.code,
+    this.routeId,
+    this.staOrder,
   });
 }
 
@@ -90,6 +94,8 @@ class StepRouteSetup extends GetView<OnboardingController> {
                                     type: result['type'] ?? 'subway',
                                     lineInfo: result['lineInfo'] ?? '',
                                     code: result['code'] ?? '',
+                                    routeId: result['routeId'],
+                                    staOrder: result['staOrder'],
                                   );
                                 }
                               },
@@ -153,6 +159,8 @@ class StepRouteSetup extends GetView<OnboardingController> {
                                       type: result['type'] ?? 'subway',
                                       lineInfo: result['lineInfo'] ?? '',
                                       code: result['code'] ?? '',
+                                      routeId: result['routeId'],
+                                      staOrder: result['staOrder'],
                                     ));
                                   }
                                 },
@@ -180,6 +188,8 @@ class StepRouteSetup extends GetView<OnboardingController> {
                                     type: result['type'] ?? 'subway',
                                     lineInfo: result['lineInfo'] ?? '',
                                     code: result['code'] ?? '',
+                                    routeId: result['routeId'],
+                                    staOrder: result['staOrder'],
                                   );
                                 }
                               },
@@ -705,6 +715,8 @@ class StepRouteSetup extends GetView<OnboardingController> {
           type: savedDeparture['type'] ?? 'subway',
           lineInfo: savedDeparture['lineInfo'] ?? '',
           code: savedDeparture['code'] ?? '',
+          routeId: savedDeparture['routeId'],
+          staOrder: savedDeparture['staOrder'],
         );
         print('🔄 출발지 복원 (Map): ${savedDeparture['name']}');
       } else {
@@ -723,6 +735,8 @@ class StepRouteSetup extends GetView<OnboardingController> {
           type: savedArrival['type'] ?? 'subway',
           lineInfo: savedArrival['lineInfo'] ?? '',
           code: savedArrival['code'] ?? '',
+          routeId: savedArrival['routeId'],
+          staOrder: savedArrival['staOrder'],
         );
         print('🔄 도착지 복원 (Map): ${savedArrival['name']}');
       } else {
@@ -749,6 +763,8 @@ class StepRouteSetup extends GetView<OnboardingController> {
             type: transfer['type'] ?? 'subway',
             lineInfo: transfer['lineInfo'] ?? '',
             code: transfer['code'] ?? '',
+            routeId: transfer['routeId'],
+            staOrder: transfer['staOrder'],
           ));
         }
       }
@@ -780,6 +796,8 @@ class StepRouteSetup extends GetView<OnboardingController> {
         'type': selectedDepartureInfo.value!.type,
         'lineInfo': selectedDepartureInfo.value!.lineInfo,
         'code': selectedDepartureInfo.value!.code,
+        'routeId': selectedDepartureInfo.value!.routeId ?? '',
+        'staOrder': selectedDepartureInfo.value!.staOrder ?? 0,
       });
     } else if (selectedDeparture.value != null) {
       // fallback: name만 있는 경우 (지하철로 추정)
@@ -788,6 +806,8 @@ class StepRouteSetup extends GetView<OnboardingController> {
         'type': 'subway',
         'lineInfo': '',
         'code': '',
+        'routeId': '',
+        'staOrder': 0,
       });
     } else {
       storage.remove('onboarding_departure');
@@ -800,6 +820,8 @@ class StepRouteSetup extends GetView<OnboardingController> {
         'type': selectedArrivalInfo.value!.type,
         'lineInfo': selectedArrivalInfo.value!.lineInfo,
         'code': selectedArrivalInfo.value!.code,
+        'routeId': selectedArrivalInfo.value!.routeId ?? '',
+        'staOrder': selectedArrivalInfo.value!.staOrder ?? 0,
       });
     } else if (selectedArrival.value != null) {
       // fallback: name만 있는 경우 (지하철로 추정)
@@ -808,6 +830,8 @@ class StepRouteSetup extends GetView<OnboardingController> {
         'type': 'subway',
         'lineInfo': '',
         'code': '',
+        'routeId': '',
+        'staOrder': 0,
       });
     } else {
       storage.remove('onboarding_arrival');
@@ -827,6 +851,8 @@ class StepRouteSetup extends GetView<OnboardingController> {
         'type': transfer.type,
         'lineInfo': transfer.lineInfo,
         'code': transfer.code,
+        'routeId': transfer.routeId ?? '',
+        'staOrder': transfer.staOrder ?? 0,
       }).toList();
       storage.write('onboarding_transfers', transfersData);
     } else {
@@ -870,28 +896,38 @@ class StepRouteSetup extends GetView<OnboardingController> {
           'type': selectedDepartureInfo.value!.type,
           'lineInfo': selectedDepartureInfo.value!.lineInfo,
           'code': selectedDepartureInfo.value!.code,
+          'routeId': selectedDepartureInfo.value!.routeId ?? '',
+          'staOrder': selectedDepartureInfo.value!.staOrder ?? 0,
         } : {
           'name': selectedDeparture.value,
           'type': 'unknown',
           'lineInfo': '',
           'code': '',
+          'routeId': '',
+          'staOrder': 0,
         },
         'arrival': selectedArrivalInfo.value != null ? {
           'name': selectedArrivalInfo.value!.name,
           'type': selectedArrivalInfo.value!.type,
           'lineInfo': selectedArrivalInfo.value!.lineInfo,
           'code': selectedArrivalInfo.value!.code,
+          'routeId': selectedArrivalInfo.value!.routeId ?? '',
+          'staOrder': selectedArrivalInfo.value!.staOrder ?? 0,
         } : {
           'name': selectedArrival.value,
           'type': 'unknown',
           'lineInfo': '',
           'code': '',
+          'routeId': '',
+          'staOrder': 0,
         },
         'transfers': transferStations.map((transfer) => {
           'name': transfer.name,
           'type': transfer.type,
           'lineInfo': transfer.lineInfo,
           'code': transfer.code,
+          'routeId': transfer.routeId ?? '',
+          'staOrder': transfer.staOrder ?? 0,
         }).toList(),
         'createdAt': DateTime.now().toIso8601String(),
       };
