@@ -636,8 +636,24 @@ class HomeController extends GetxController {
     print('🚌 $locationType 버스 도착정보 로딩: $stationName (code: $stationCode, region: $lineInfo)');
     
     if (lineInfo.contains('경기도')) {
-      // 경기도 버스 도착정보
-      final arrivals = await BusArrivalService.getBusArrivalInfo(stationCode);
+      // 경기도 버스 도착정보 (v2 API 사용)
+      final routeId = locationData['routeId']?.toString() ?? '';
+      final staOrder = locationData['staOrder'] ?? 0;
+      
+      List<BusArrivalInfo> arrivals = [];
+      
+      if (routeId.isNotEmpty && staOrder > 0) {
+        // routeId와 staOrder가 있는 경우 - 새로운 v2 API 사용
+        print('🚌 경기도 버스 v2 API 호출: stationId=$stationCode, routeId=$routeId, staOrder=$staOrder');
+        final arrivalInfo = await BusArrivalService.getBusArrivalItemv2(stationCode, routeId, staOrder);
+        if (arrivalInfo != null) {
+          arrivals = [arrivalInfo];
+        }
+      } else {
+        // routeId와 staOrder가 없는 경우 - 도착정보 없음으로 처리
+        print('⚠️ 경기도 버스 routeId 또는 staOrder가 없어 도착정보를 가져올 수 없습니다.');
+        arrivals = [];
+      }
       
       if (locationType == 'departure') {
         departureBusArrivalInfo.value = arrivals;
