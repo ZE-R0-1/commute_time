@@ -8,7 +8,27 @@
 
 ---
 
-<img src="https://github.com/user-attachments/assets/fa8c9e9b-c245-45a8-a8f2-1c6e5b1fffa8" width="30%"> <img src="https://github.com/user-attachments/assets/3ea967e1-8af6-42ce-964e-4cd2e64a2e3e" width="30%"> <img src="https://github.com/user-attachments/assets/4cd985d9-b69f-4f3c-98d9-e0bfd90c9f5f" width="30%">
+## 스크린샷
+
+<table>
+  <tr>
+    <td><img src="assets/screenshot/1.png" alt="스크린샷 1" /></td>
+    <td><img src="assets/screenshot/2.png" alt="스크린샷 2" /></td>
+    <td><img src="assets/screenshot/3.png" alt="스크린샷 3" /></td>
+  </tr>
+  <tr>
+    <td><img src="assets/screenshot/4.png" alt="스크린샷 4" /></td>
+    <td><img src="assets/screenshot/5.png" alt="스크린샷 5" /></td>
+    <td><img src="assets/screenshot/6.png" alt="스크린샷 6" /></td>
+  </tr>
+  <tr>
+    <td><img src="assets/screenshot/7.png" alt="스크린샷 7" /></td>
+    <td><img src="assets/screenshot/8.png" alt="스크린샷 8" /></td>
+    <td><img src="assets/screenshot/9.png" alt="스크린샷 9" /></td>
+  </tr>
+</table>
+
+---
 
 ## 프로젝트 소개
 
