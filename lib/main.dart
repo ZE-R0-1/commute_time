@@ -6,8 +6,9 @@ import 'package:get_storage/get_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 
-import 'app/routes/app_pages.dart';
-import 'app/theme/app_theme.dart';
+import 'core/di/inject_provider.dart';
+import 'core/routes/app_pages.dart';
+import 'core/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +34,9 @@ void main() async {
 
   // 로컬 저장소 초기화
   await GetStorage.init();
+
+  // DI 컨테이너 초기화
+  await setupDependencies();
 
   print('=== 앱 시작 ===');
   print('저장소 초기화 완료');
