@@ -111,7 +111,7 @@ APIs & Local Storage
 
 ### 🛣️ 경로 설정 (CRUD 기능)
 
-**핹심 기능:**
+**핵핵심 기능:**
 - **경로 추가/수정/삭제**
   - 여러 개의 출퇴근 경로 저장 (집↔회사, 집↔학교 등)
   - 경로별 이름 지정 가능
@@ -424,15 +424,15 @@ List<Location> locations = await locationFromAddress("강남역");
 
 ## 📁 프로젝트 구조
 
-### 고수준 구조
+### 구조
 
 ```
 lib/
-├── core/                           # 교차 계층 공통 로직 (2000+ LOC)
+├── core/                           # 교차 계층 공통 로직 ()
 │   ├── api/
 │   │   ├── base/
 │   │   │   └── api_client.dart     # 기본 HTTP 클라이언트 (에러 처리)
-│   │   ├── clients/                # 특화된 API 클라이언트 (5개)
+│   │   ├── clients/                # API 클라이언트 (5개)
 │   │   │   ├── weather_api_client.dart
 │   │   │   ├── subway_api_client.dart
 │   │   │   ├── bus_api_client.dart
@@ -463,7 +463,7 @@ lib/
 │       └── bus_type_utils.dart     # 버스 타입 분류
 │
 ├── features/
-│   ├── home/                       # 홈 화면 (실시간 정보) - 3000+ LOC
+│   ├── home/                       # 홈 화면 (실시간 정보)
 │   │   ├── data/
 │   │   │   ├── datasources/
 │   │   │   │   ├── weather_remote_datasource.dart
@@ -502,7 +502,7 @@ lib/
 │   │   │           └── header/
 │   │   └── home_binding.dart
 │   │
-│   ├── location_search/            # 위치 검색 - 4000+ LOC
+│   ├── location_search/            # 위치 검색
 │   │   ├── data/
 │   │   │   ├── datasources/ (7개)
 │   │   │   ├── models/
@@ -522,7 +522,7 @@ lib/
 │   │   │       └── dialogs/
 │   │   └── location_search_binding.dart
 │   │
-│   ├── route_setup/                # 경로 설정 - 2000+ LOC
+│   ├── route_setup/                # 경로 설정
 │   │   └── presentation/
 │   │       ├── controllers/
 │   │       │   └── route_setup_controller.dart
@@ -533,7 +533,7 @@ lib/
 │   │               ├── dialogs/
 │   │               └── common/
 │   │
-│   ├── settings/                   # 설정 - 1000+ LOC
+│   ├── settings/                   # 설정
 │   │   └── presentation/
 │   │       ├── controllers/
 │   │       │   └── settings_controller.dart
@@ -544,7 +544,7 @@ lib/
 │   │               ├── notification/
 │   │               └── app_settings/
 │   │
-│   ├── onboarding/                 # 온보딩 - 2500+ LOC
+│   ├── onboarding/                 # 온보딩
 │   │   └── presentation/
 │   │       ├── controllers/
 │   │       │   └── onboarding_controller.dart
@@ -554,7 +554,7 @@ lib/
 │   │           ├── components/
 │   │           └── dialogs/
 │   │
-│   ├── splash/                     # 스플래시 - 500 LOC
+│   ├── splash/                     # 스플래시
 │   │   └── presentation/
 │   │       ├── controllers/
 │   │       │   └── splash_controller.dart
@@ -562,7 +562,7 @@ lib/
 │   │           ├── splash_screen.dart
 │   │           └── components/
 │   │
-│   └── main/                       # 탭 네비게이션 - 500 LOC
+│   └── main/                       # 탭 네비게이션
 │       └── presentation/
 │           ├── controllers/
 │           │   └── main_controller.dart
@@ -571,16 +571,6 @@ lib/
 │
 └── main.dart                       # 앱 진입점
 ```
-
-### 통계
-- **총 파일 수**: 186개 Dart 파일
-- **총 코드량**: 17,471 라인
-- **주요 기능 모듈**: 6개
-- **주요 컨트롤러**: 12개
-- **API 통합**: 8개
-- **도메인 엔티티**: 13개+
-
----
 
 ## 🧠 상태관리 & 컨트롤러 구조
 
@@ -738,46 +728,6 @@ enum BusType {
   wideArea,     // 광역버스 (빨간색)
   circulating,  // 순환버스 (황색)
 }
-```
-
----
-
-## 🚀 시작하기
-
-### 사전 요구사항
-
-```bash
-- Flutter SDK 3.29+
-- Dart SDK 3.0+
-- Android Studio / Xcode (플랫폼별)
-- Git
-```
-
-### 설치 및 실행
-
-```bash
-# 1. 저장소 클론
-git clone https://github.com/your-repo/commute_time.git
-cd commute_time
-
-# 2. 의존성 설치
-flutter pub get
-
-# 3. 환경 변수 설정
-# .env 파일 생성 (API 키 입력)
-cat > .env << EOF
-KAKAO_API_KEY=your_kakao_api_key
-SUBWAY_API_KEY=your_subway_api_key
-BUS_API_KEY=your_bus_api_key
-KMA_API_KEY=your_kma_api_key
-EOF
-
-# 4. 코드 생성 (JSON serialization)
-flutter pub run build_runner build
-
-# 5. 앱 실행
-flutter run
-```
 
 ---
 
@@ -794,7 +744,6 @@ flutter run
 
 - **구조화된 데이터**: Map 형태로 출발지/도착지/환승지 정보 저장
 - **메타데이터 포함**: 교통수단 타입, 노선 정보, 정류장 코드
-- **버전 관리**: 구형식 데이터 마이그레이션 지원
 - **로컬 영속화**: GetStorage를 통한 캐싱
 
 ### 날씨 정보
@@ -810,23 +759,6 @@ flutter run
 - **거리순 정렬**: 현재 위치 기반 가까운 정류장 우선
 - **실시간 마커**: 맵에서 실시간 마커 업데이트
 
----
-
-## 🔍 디버깅 & 로그
-
-### 주요 로그 포인트
-
-앱 실행 시 다음 로그로 동작을 확인할 수 있습니다:
-
-```
-=== 홈 화면 초기화 ===
-📍 [초기화] 1단계: 경로 데이터 로딩...
-✅ 온보딩 경로 데이터 로드 완료
-📍 [초기화] 2단계: 날씨/도착정보 로딩...
-🚦 loadDepartureArrivalInfo 호출됨
-📍 출발지 도착정보 로딩 시작
-✅ 지하철 도착정보 로딩 성공
-✅ 모든 도착정보 새로고침 완료
 ```
 
 ### 주요 컨트롤러
@@ -835,168 +767,6 @@ flutter run
 - `RouteSetupController`: 경로 CRUD 작업
 - `LocationSearchController`: 장소 검색
 - `ArrivalController`: 실시간 도착정보 로딩
-
----
-
-## 📊 커밋 히스토리 (최근 5개)
-
-1. **e1e92a9** - feat: Getx, Clean Architecture 적용 v2
-   - 전체 아키텍처 리팩토링 (237개 파일 수정)
-   - Domain/Data/Presentation 계층 분리
-   - GetIt + GetX 하이브리드 DI 시스템 적용
-
-2. **dbaf2dd** - #68 feat: 홈화면 경기도도착정보 api 교체
-   - Gyeonggi Bus API v2로 마이그레이션
-   - 데이터 정확도 및 실시간 성능 향상
-
-3. **2009e77** - #67 feat: 바텀시트 데이터 콜백 개선
-   - 데이터 전달 메커니즘 개선
-   - UX 향상
-
-4. **3818cf8** - #66 feat: 홈화면 도착정보 UI
-   - 도착정보 표시 UI 개선
-   - 데이터 시각화 최적화
-
-5. **4c07250** - #65 feat: 데이터 구조 개선
-   - 저장된 경로 데이터 구조 리팩토링
-   - 레거시 데이터 마이그레이션 지원
-
----
-
-## 🎓 프로젝트 회고
-
-### 🌟 잘된 부분
-
-#### 1. **아키텍처 선택 - Clean Architecture**
-- **장점**: 코드가 명확하게 분리되어 유지보수가 쉬움
-- **결과**: 새로운 기능 추가 시 코드 수정 영역을 최소화
-- **학습**: 비즈니스 로직과 UI 로직의 완전한 분리의 중요성 깨달음
-
-#### 2. **GetX 상태관리 활용**
-- **장점**: 간결한 코드, 자동 메모리 관리, 반응형 업데이트
-- **결과**: Obx() 위젯으로 필요한 부분만 자동 리빌드
-- **학습**: 대규모 상태 관리에서 GetX의 효율성 증명
-
-#### 3. **다중 API 통합**
-- **도전**: 8개의 서로 다른 API를 통합하면서도 코드 중복 제거
-- **해결**: BaseApiClient를 상속받은 특화된 클라이언트로 통합
-- **결과**: 새로운 API 추가 시 템플릿 코드 재사용 가능
-
-#### 4. **실시간 데이터 흐름**
-- **도전**: 홈 화면에서 여러 역의 도착정보를 동시에 병렬 로드
-- **해결**: Future.wait()로 병렬 처리, 타임아웃 처리 추가
-- **결과**: 평균 로딩 시간 50% 단축
-
-#### 5. **로컬 데이터 영속화**
-- **도전**: 복잡한 경로 데이터를 JSON으로 직렬화
-- **해결**: toMap()과 fromMap() 메서드로 양방향 변환
-- **결과**: 데이터 마이그레이션도 자동 지원
-
-### ⚠️ 어려웠던 부분
-
-#### 1. **버스 API 복잡성**
-- **문제**: 서울과 경기도 버스 API가 완전히 다른 구조
-- **해결**: SeoulBusArrivalRemoteDataSource와 BusArrivalRemoteDataSource 분리
-- **배운 점**: 도메인별로 다른 데이터 구조를 통일된 엔티티로 변환하는 기술
-
-#### 2. **실시간 데이터 갱신 타이밍**
-- **문제**: 앱 재실행 시 새로고침 버튼을 눌러야 도착정보가 보임
-- **해결**: HomeController의 초기화 순서를 경로 → 도착정보 순으로 변경
-- **배운 점**: GetX의 반응형 변수 업데이트 순서가 중요함
-
-#### 3. **GetStorage 타입 캐스팅**
-- **문제**: GetStorage에서 반환되는 Map<dynamic, dynamic>을 Map<String, dynamic>으로 변환
-- **해결**: explicit cast 적용: Map<String, dynamic>.from()
-- **배운 점**: Dart의 제네릭 타입 시스템의 엄격함
-
-#### 4. **기상청 API 격자 좌표 변환**
-- **문제**: 위도/경도를 기상청 고유의 격자 좌표로 정확히 변환
-- **해결**: 공식 변환 알고리즘 구현 (좌표계 수학 필요)
-- **배운 점**: 공공 API의 고유한 요구사항을 이해하는 것이 중요
-
-#### 5. **에러 처리 전략**
-- **문제**: API 실패 시 사용자에게 적절한 메시지 전달
-- **해결**: Failure 계층 구조 + Either<Failure, Data> 패턴
-- **배운 점**: 함수형 에러 처리의 우아함
-
-### 📈 성능 개선
-
-#### 1. **API 호출 최적화**
-- **이전**: 각 역의 도착정보를 순차적으로 로드 (3개 역 = ~3초)
-- **이후**: Future.wait()로 병렬 로드 (~1초)
-- **개선율**: 66% 로딩 시간 단축
-
-#### 2. **검색 디바운싱**
-- **이전**: 매 글자마다 API 호출 (0.1초 간격)
-- **이후**: 입력 완료 후 300ms 대기 후 한 번만 호출
-- **개선율**: API 호출 70% 감소
-
-#### 3. **메모리 관리**
-- **GetX 취소 메커니즘**: onClose()에서 구독/타이머 자동 정리
-- **결과**: 메모리 누수 완벽 방지
-
-### 🎯 주요 학습 포인트
-
-1. **Clean Architecture의 실제 적용**
-   - 이론과 실제 구현의 차이 경험
-   - 계층 간 명확한 의존성 관리의 중요성
-
-2. **GetX의 깊이 있는 이해**
-   - Rx 변수의 자동 업데이트 메커니즘
-   - 컨트롤러 라이프사이클 관리
-
-3. **공공 API 통합 경험**
-   - 다양한 API 구조 및 정책 이해
-   - 에러 처리 및 재시도 로직
-
-4. **함수형 프로그래밍 (Dart/Dartz)**
-   - Either 타입을 통한 우아한 에러 처리
-   - 불변성과 함수 합성의 중요성
-
-5. **모바일 앱 성능 최적화**
-   - UI 리빌드 최소화 (Obx 사용)
-   - API 호출 횟수 최소화 (디바운싱, 배싱)
-
-### 🚀 앞으로의 개선 방향
-
-#### 단기 (1-2개월)
-- [ ] 단위 테스트 작성 (UseCase, Repository)
-- [ ] 위젯 테스트 작성 (UI 컴포넌트)
-- [ ] 에러 메시지 다국어화
-
-#### 중기 (3-6개월)
-- [ ] 알림 기능 완성 (local_notifications)
-- [ ] 오프라인 모드 지원
-- [ ] 사용자 통계 및 분석
-- [ ] 로그인 및 클라우드 동기화
-
-#### 장기 (6개월 이상)
-- [ ] AI 기반 경로 추천
-- [ ] 실시간 교통 장애 알림
-- [ ] 커뮤니티 피드 (경로 공유)
-- [ ] 웹 애플리케이션 (Flutter Web)
-
-### 📚 기술 债务 (Technical Debt)
-
-1. **테스트 부족** - 현재 유닛 테스트 없음
-   - 우선순위: 높음
-   - 예상 시간: 40시간
-
-2. **에러 처리 완성도** - 일부 엣지 케이스 미처리
-   - 우선순위: 중간
-   - 예상 시간: 10시간
-
-3. **문서화 부족** - 복잡한 로직에 주석 필요
-   - 우선순위: 중간
-   - 예상 시간: 15시간
-
-### ✨ 프로젝트를 통한 깨달음
-
-이 프로젝트를 통해 **단순한 기능 개발을 넘어 프로덕션-레벨의 모바일 앱 아키텍처를 설계하고 구현**하는 경험을 얻었습니다.
-
-특히 **Clean Architecture와 GetX의 조합**이 얼마나 강력한지, 그리고 **명확한 아키텍처가 코드 유지보수성과 확장성을 얼마나 향상시키는지** 직접 경험했습니다.
-
-앞으로 모든 프로젝트의 기반이 될 좋은 패턴과 실무 경험을 갖추게 되었습니다.
 
 ---
 
